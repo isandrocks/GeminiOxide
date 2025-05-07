@@ -1,0 +1,69 @@
+use eframe::egui;
+use reqwest::Client;
+use serde_json::json;
+use serde_json::Value;
+use tokio::runtime::Runtime;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let prompt_in = eframe::NativeOptions::default();
+    let _ = eframe::run_native(
+        "Prompt Input",
+        prompt_in,
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+    );
+    Ok(())
+}
+
+#[derive(Default)]
+struct MyApp {
+    prompt: String,
+    llm_responce: String,
+    is_loading: bool,
+}
+
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Enter a prompt:");
+            ui.text_edit_singleline(&mut self.prompt);
+
+            if ui
+                .add_enabled(!self.is_loading, egui::Button::new("Generate"))
+                .clicked()
+            {
+                self.is_loading = true;
+                let prompt = self.prompt.clone();
+                let response = Runtime::new().unwrap().block_on(async {
+                    send_request(prompt)
+                        .await
+                        .unwrap_or_else(|_| "Error".to_string())
+                });
+                self.is_loading = false;
+                self.llm_responce = response;
+            }
+
+            ui.label("Response:");
+            ui.label(&self.llm_responce);
+        });
+    }
+}
+
+async fn send_request(prompt: String) -> Result<String, Box<dyn std::error::Error>> {
+    let client = Client::new();
+    let res = client
+        .post("http://localhost:11434/api/generate")
+        .json(&json!
+        ({
+            "model": "dolphin-llama3:latest",
+            "prompt": prompt,
+            "stream": false
+        }))
+        .send()
+        .await?;
+
+    let responce_text = res.text().await?;
+    let json: Value = serde_json::from_str(&responce_text)?;
+    let response_value = json["response"].as_str().unwrap_or_default();
+
+    Ok(response_value.to_string())
+}

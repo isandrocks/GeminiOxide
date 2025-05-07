@@ -1,0 +1,97 @@
+use eframe::egui;
+use reqwest::Client;
+use serde_json::json;
+use serde_json::Value;
+use std::sync::{Arc, Mutex};
+use tokio::sync::oneshot;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let prompt_in = eframe::NativeOptions::default();
+    let _ = eframe::run_native(
+        "Prompt Input",
+        prompt_in,
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+    );
+    Ok(())
+}
+
+#[derive(Default)]
+struct MyApp {
+    prompt: String,
+    llm_responce: String,
+    is_loading: bool,
+}
+
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Enter a prompt:");
+            ui.text_edit_singleline(&mut self.prompt);
+
+            if ui
+                .add_enabled(!self.is_loading, egui::Button::new("Generate"))
+                .clicked()
+            {
+                self.is_loading = true;
+                let prompt_clone = self.prompt.clone();
+                let is_loading_clone = self.is_loading.clone();
+
+                // Wrap is_loading in Arc<Mutex> for thread-safe sharing
+                let is_loading_shared = Arc::new(Mutex::new(is_loading_clone));
+                let is_loading_thread = Arc::clone(&is_loading_shared);
+
+                // Spawn a task to handle the async request
+                let (tx, mut rx) = oneshot::channel();
+                std::thread::spawn(move || {
+                    let response = tokio::runtime::Runtime::new().unwrap().block_on(async {
+                        send_request(prompt_clone)
+                            .await
+                            .unwrap_or_else(|_| "Error".to_string())
+                    });
+                    if tx.send(response).is_err() {
+                        eprintln!("Failed to send response: Receiver dropped" );
+                        // Set is_loading to false on failure
+                        let mut is_loading = is_loading_thread.lock().unwrap();
+                        *is_loading = false;
+                    }
+                });
+
+                // Poll the channel for the response
+                let llm_responce = &mut self.llm_responce;
+                let is_loading = Arc::clone(&is_loading_shared);
+                ctx.request_repaint(); // Keep GUI responsive
+                if let Ok(response) = rx.try_recv() {
+                    *llm_responce = response;
+                    let mut is_loading = is_loading.lock().unwrap();
+                    *is_loading = false;
+                }
+
+                // Update the local is_loading from the shared state
+                self.is_loading = *is_loading.lock().unwrap();
+                ctx.request_repaint();
+            }
+
+            ui.label("Response:");
+            ui.label(&self.llm_responce);
+        });
+    }
+}
+
+async fn send_request(prompt: String) -> Result<String, Box<dyn std::error::Error>> {
+    let client = Client::new();
+    let res = client
+        .post("http://localhost:11434/api/generate")
+        .json(&json!({
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": false
+        }))
+        .send()
+        .await?;
+
+    let responce_text = res.text().await?;
+    let json: Value = serde_json::from_str(&responce_text)?;
+    let response_value = json["response"].as_str().unwrap_or_default();
+
+    Ok(response_value.to_string())
+}
