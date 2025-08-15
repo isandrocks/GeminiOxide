@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = "0.30.0"
 egui = "0.30.0"
-egui_commonmark = "0.17"
+egui_commonmark = "0.19"
 image = "0.25.5"
 reqwest = { version = "0.12", features = ["json"] }
 serde = "1.0.217"

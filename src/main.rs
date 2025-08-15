@@ -120,7 +120,7 @@ impl eframe::App for MyApp {
                     ui.separator();
                     
                     // Render the response with markdown formatting
-                    CommonMarkViewer::new("response")
+                    CommonMarkViewer::new()
                         .show(ui, &mut self.commonmark_cache, &self.llm_response);
                 } else {
                     // Show placeholder text when no response yet
