@@ -4,14 +4,15 @@ use egui::{Spinner, ViewportBuilder};
 use std::{sync::Arc, thread::JoinHandle};
 use tokio::runtime::Runtime;
 mod utils;
-use utils::{send_request, load_image_from_path};
-
+use utils::{send_request, load_image_from_bytes};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load an image to use as the application icon
-    let imported_img = load_image_from_path(std::path::Path::new(
-        "C:/Users/TestSandRocks/Documents/GitHub/ol_spell/src/heart_inlineBG.png",
-    ))?;
+    // Load environment variables from .env file
+    dotenv::dotenv().ok();
+    
+    // Embed the image directly into the binary at compile time
+    let imported_img_bytes = include_bytes!("heart_inlineBG.png");
+    let imported_img = load_image_from_bytes(imported_img_bytes)?;
 
     let heart_icon = egui::IconData {
         rgba: imported_img,
@@ -21,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Configure the application viewport with a custom icon
     let custom_viewport = ViewportBuilder {
-        title: Some("Ollama Interface".to_string()),
+        title: Some("Gemini Interface".to_string()),
         icon: Some(Arc::new(heart_icon)),
         ..ViewportBuilder::default()
     };
@@ -33,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Run the application with the custom options
     eframe::run_native(
-        "Ollama Interface",
+        "Gemini Interface",
         custom_options,
         Box::new(|_cc| Ok(Box::new(MyApp::default()))),
     )?;
