@@ -1,11 +1,11 @@
 #![windows_subsystem = "windows"]
 use eframe::{egui, NativeOptions};
 use egui::{Spinner, ViewportBuilder};
+use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::{sync::Arc, thread::JoinHandle};
 use tokio::runtime::Runtime;
-use egui_commonmark::{CommonMarkCache, CommonMarkViewer}; 
 mod utils;
-use utils::{send_request, load_image_from_bytes};
+use utils::{load_image_from_bytes, send_request};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok(); // just for the API key secret
@@ -73,7 +73,7 @@ impl eframe::App for MyApp {
             ui.add_space(3.0);
 
             let mut should_generate = false;
-            
+
             ui.with_layout(
                 egui::Layout::top_down_justified(egui::Align::Center),
                 |ui| {
@@ -87,7 +87,8 @@ impl eframe::App for MyApp {
 
             if ui
                 .add_enabled(!self.is_loading, egui::Button::new("Generate"))
-                .clicked() || should_generate
+                .clicked()
+                || should_generate
             {
                 if !self.is_loading && !self.prompt.trim().is_empty() {
                     self.is_loading = true;
@@ -97,8 +98,8 @@ impl eframe::App for MyApp {
                     self.client_thread = Some(self.start_client_thread(prompt_clone));
                 }
             }
-
             ui.add_space(3.0);
+
             ui.heading("Response:");
             ui.separator();
 
@@ -106,9 +107,12 @@ impl eframe::App for MyApp {
                 if !self.llm_response.is_empty() {
                     ui.label(format!("Prompt: {}", self.last_prompt));
                     ui.separator();
-                    
-                    CommonMarkViewer::new()
-                        .show(ui, &mut self.commonmark_cache, &self.llm_response);
+
+                    CommonMarkViewer::new().show(
+                        ui,
+                        &mut self.commonmark_cache,
+                        &self.llm_response,
+                    );
                 } else {
                     ui.label("No response yet...");
                 }
@@ -116,7 +120,7 @@ impl eframe::App for MyApp {
 
             if self.is_loading {
                 ui.add(Spinner::default().size(16.0).color(egui::Color32::RED));
-                
+
                 if let Some(handle) = self.client_thread.take() {
                     if handle.is_finished() {
                         if let Ok(res) = handle.join() {
