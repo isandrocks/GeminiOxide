@@ -3,15 +3,13 @@ use eframe::{egui, NativeOptions};
 use egui::{Spinner, ViewportBuilder};
 use std::{sync::Arc, thread::JoinHandle};
 use tokio::runtime::Runtime;
-use egui_commonmark::{CommonMarkCache, CommonMarkViewer}; // Add this import
+use egui_commonmark::{CommonMarkCache, CommonMarkViewer}; 
 mod utils;
 use utils::{send_request, load_image_from_bytes};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load environment variables from .env file
-    dotenv::dotenv().ok();
-    
-    // Embed the image directly into the binary at compile time
+    dotenv::dotenv().ok(); // just for the API key secret
+
     let imported_img_bytes = include_bytes!("heart_inlineBG.png");
     let imported_img = load_image_from_bytes(imported_img_bytes)?;
 
@@ -21,7 +19,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         height: 32,
     };
 
-    // Configure the application viewport with a custom icon
     let custom_viewport = ViewportBuilder {
         title: Some("Gemini Interface".to_string()),
         icon: Some(Arc::new(heart_icon)),
@@ -33,7 +30,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..NativeOptions::default()
     };
 
-    // Run the application with the custom options
     eframe::run_native(
         "Gemini Interface",
         custom_options,
@@ -42,24 +38,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Define the application state
 #[derive(Default)]
 struct MyApp {
     prompt: String,
-    last_prompt: String, // Store the last sent prompt
+    last_prompt: String,
     llm_response: String,
     is_loading: bool,
     client_thread: Option<JoinHandle<Result<String, ()>>>,
-    commonmark_cache: CommonMarkCache, // Add this field
+    commonmark_cache: CommonMarkCache,
 }
 
 impl MyApp {
-    // Update the response from the language model
     fn update_llm_response(&mut self, response: String) {
         self.llm_response = response;
     }
 
-    // Start a new thread to send a request to the language model
     fn start_client_thread(&self, prompt: String) -> std::thread::JoinHandle<Result<String, ()>> {
         std::thread::spawn(move || {
             let response = Runtime::new().unwrap().block_on(async {
@@ -74,7 +67,6 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
-    // Update the UI and handle user interactions
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Enter a prompt:");
@@ -86,7 +78,6 @@ impl eframe::App for MyApp {
                 egui::Layout::top_down_justified(egui::Align::Center),
                 |ui| {
                     let response = ui.text_edit_singleline(&mut self.prompt);
-                    // Check if Enter was pressed while the text input has focus
                     if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                         should_generate = true;
                     }
@@ -94,7 +85,6 @@ impl eframe::App for MyApp {
             );
             ui.add_space(3.0);
 
-            // Handle the "Generate" button click or Enter key press
             if ui
                 .add_enabled(!self.is_loading, egui::Button::new("Generate"))
                 .clicked() || should_generate
@@ -102,8 +92,8 @@ impl eframe::App for MyApp {
                 if !self.is_loading && !self.prompt.trim().is_empty() {
                     self.is_loading = true;
                     let prompt_clone = self.prompt.clone();
-                    self.last_prompt = self.prompt.clone(); // Store the prompt before starting
-                    self.prompt.clear(); // Clear the text field immediately
+                    self.last_prompt = self.prompt.clone();
+                    self.prompt.clear();
                     self.client_thread = Some(self.start_client_thread(prompt_clone));
                 }
             }
@@ -112,23 +102,18 @@ impl eframe::App for MyApp {
             ui.heading("Response:");
             ui.separator();
 
-            // Display the response in a scrollable area with markdown support
             egui::ScrollArea::vertical().show(ui, |ui| {
-                // Show the original prompt first
                 if !self.llm_response.is_empty() {
                     ui.label(format!("Prompt: {}", self.last_prompt));
                     ui.separator();
                     
-                    // Render the response with markdown formatting
                     CommonMarkViewer::new()
                         .show(ui, &mut self.commonmark_cache, &self.llm_response);
                 } else {
-                    // Show placeholder text when no response yet
                     ui.label("No response yet...");
                 }
             });
 
-            // Show a loading spinner while waiting for the response
             if self.is_loading {
                 ui.add(Spinner::default().size(16.0).color(egui::Color32::RED));
                 
@@ -140,7 +125,6 @@ impl eframe::App for MyApp {
                             ctx.request_repaint();
                         }
                     } else {
-                        // If the thread is not finished, put the handle back
                         self.client_thread = Some(handle);
                     }
                 }
