@@ -30,7 +30,7 @@ pub async fn send_request(prompt: String) -> Result<String, Box<dyn std::error::
         .await?
         .error_for_status()?;
 
-        let res_json: Value = res.json().await?;
+    let res_json: Value = res.json().await?;
 
     // JSON Drilling for Text or it responds with a failure notice
     let response_value = res_json

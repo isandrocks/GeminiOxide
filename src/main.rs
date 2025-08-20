@@ -3,7 +3,7 @@ use eframe::{egui, NativeOptions};
 mod api_client;
 mod img_utils;
 mod ui_components;
-use ui_components::{UIState, create_viewport_with_icon};
+use ui_components::{create_viewport_with_icon, UIState};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok(); // just for the API key secret
@@ -33,8 +33,9 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let should_generate_from_input = self.ui_state.render_prompt_section(ui);
-            let (should_generate_from_button, _screenshot_taken) = self.ui_state.render_action_buttons(ui, ctx);
-            
+            let (should_generate_from_button, _screenshot_taken) =
+                self.ui_state.render_action_buttons(ui, ctx);
+
             if should_generate_from_input || should_generate_from_button {
                 let prompt_clone = self.ui_state.prompt.clone();
                 self.ui_state.start_async_request(prompt_clone);

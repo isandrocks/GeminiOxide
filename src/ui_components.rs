@@ -1,5 +1,5 @@
-use crate::img_utils;
 use crate::api_client::spawn_async_request;
+use crate::img_utils;
 use eframe::egui;
 use egui::{Spinner, TextureHandle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
@@ -118,7 +118,7 @@ impl UIState {
             if let Some(ref texture) = self.captured_img {
                 ui.separator();
                 ui.label("Image:");
-                
+
                 let available_width = ui.available_width();
                 ui.add(
                     egui::Image::from_texture(texture)
@@ -147,9 +147,12 @@ impl UIState {
     }
 }
 
-pub fn create_viewport_with_icon(title: &str, icon_bytes: &[u8]) -> Result<egui::ViewportBuilder, Box<dyn std::error::Error>> {
+pub fn create_viewport_with_icon(
+    title: &str,
+    icon_bytes: &[u8],
+) -> Result<egui::ViewportBuilder, Box<dyn std::error::Error>> {
     let icon = crate::img_utils::create_app_icon(icon_bytes, 32, 32)?;
-    
+
     Ok(egui::ViewportBuilder {
         title: Some(title.to_string()),
         icon: Some(Arc::new(icon)),
