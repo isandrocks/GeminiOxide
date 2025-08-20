@@ -13,7 +13,6 @@ pub struct UIState {
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
     pub screenshot_img: Option<TextureHandle>,
-    pub is_captured: bool,
 }
 
 impl Default for UIState {
@@ -26,7 +25,6 @@ impl Default for UIState {
             client_thread: None,
             commonmark_cache: CommonMarkCache::default(),
             screenshot_img: None,
-            is_captured: false,
         }
     }
 }
@@ -46,13 +44,13 @@ impl UIState {
         }
     }
 
-    pub fn render_prompt_section(&mut self, ui: &mut egui::Ui) -> bool {
-        ui.heading("Enter a prompt:");
-        ui.add_space(3.0);
+    pub fn render_prompt_section(&mut self, app_ui: &mut egui::Ui) -> bool {
+        app_ui.heading("Enter a prompt:");
+        app_ui.add_space(3.0);
 
         let mut should_generate = false;
 
-        ui.with_layout(
+        app_ui.with_layout(
             egui::Layout::top_down_justified(egui::Align::Center),
             |ui| {
                 let response = ui.text_edit_singleline(&mut self.prompt);
@@ -61,16 +59,16 @@ impl UIState {
                 }
             },
         );
-        ui.add_space(3.0);
+        app_ui.add_space(3.0);
 
         should_generate
     }
 
-    pub fn render_action_buttons(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> (bool, bool) {
+    pub fn render_action_buttons(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context) -> (bool, bool) {
         let mut should_generate = false;
         let mut screenshot_taken = false;
 
-        ui.horizontal(|ui| {
+        app_ui.horizontal(|ui| {
             if ui
                 .add_enabled(!self.is_loading, egui::Button::new("Generate"))
                 .clicked()
@@ -83,8 +81,7 @@ impl UIState {
                 .clicked()
             {
                 match screen_cap::take_full_screenshot(ctx) {
-                    Ok(image) => {
-                        self.is_captured = true;
+                    Ok(image) => {                        
                         self.screenshot_img = Some(image);
                         screenshot_taken = true;
                     }
@@ -94,16 +91,16 @@ impl UIState {
                 }
             }
         });
-        ui.add_space(3.0);
+        app_ui.add_space(3.0);
 
         (should_generate, screenshot_taken)
     }
 
-    pub fn render_response_section(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Response:");
-        ui.separator();
+    pub fn render_response_section(&mut self, app_ui: &mut egui::Ui) {
+        app_ui.heading("Response:");
+        app_ui.separator();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        egui::ScrollArea::vertical().show(app_ui, |ui| {
             if !self.llm_response.is_empty() {
                 ui.label(format!("Prompt: {}", self.last_prompt));
                 ui.separator();
@@ -125,9 +122,9 @@ impl UIState {
         });
     }
 
-    pub fn render_loading_indicator(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+    pub fn render_loading_indicator(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context) {
         if self.is_loading {
-            ui.add(Spinner::default().size(16.0).color(egui::Color32::RED));
+            app_ui.add(Spinner::default().size(16.0).color(egui::Color32::RED));
 
             if let Some(handle) = self.client_thread.take() {
                 if handle.is_finished() {

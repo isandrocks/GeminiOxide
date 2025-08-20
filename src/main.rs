@@ -2,9 +2,9 @@
 use eframe::{egui, NativeOptions};
 mod utils;
 mod screen_cap;
-mod ui;
+mod ui_system;
 use utils::create_viewport_with_icon;
-use ui::UIState;
+use ui_system::UIState;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok(); // just for the API key secret
