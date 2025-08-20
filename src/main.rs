@@ -1,11 +1,12 @@
 #![windows_subsystem = "windows"]
 use eframe::{egui, NativeOptions};
-use egui::{Spinner, ViewportBuilder};
+use egui::{Spinner, TextureHandle, ViewportBuilder};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::{sync::Arc, thread::JoinHandle};
 use tokio::runtime::Runtime;
 mod utils;
 use utils::{load_image_from_bytes, send_request};
+mod screen_cap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok(); // just for the API key secret
@@ -46,6 +47,8 @@ struct MyApp {
     is_loading: bool,
     client_thread: Option<JoinHandle<Result<String, ()>>>,
     commonmark_cache: CommonMarkCache,
+    screenshot_img: Option<TextureHandle>,
+    is_captured: bool,
 }
 
 impl MyApp {
@@ -85,19 +88,37 @@ impl eframe::App for MyApp {
             );
             ui.add_space(3.0);
 
-            if ui
-                .add_enabled(!self.is_loading, egui::Button::new("Generate"))
-                .clicked()
-                || should_generate
-            {
-                if !self.is_loading && !self.prompt.trim().is_empty() {
-                    self.is_loading = true;
-                    let prompt_clone = self.prompt.clone();
-                    self.last_prompt = self.prompt.clone();
-                    self.prompt.clear();
-                    self.client_thread = Some(self.start_client_thread(prompt_clone));
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(!self.is_loading, egui::Button::new("Generate"))
+                    .clicked()
+                    || should_generate
+                {
+                    if !self.is_loading && !self.prompt.trim().is_empty() {
+                        self.is_loading = true;
+                        let prompt_clone = self.prompt.clone();
+                        self.last_prompt = self.prompt.clone();
+                        self.prompt.clear();
+                        self.llm_response.clear();
+                        self.client_thread = Some(self.start_client_thread(prompt_clone));
+                    }
                 }
-            }
+
+                if ui
+                    .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
+                    .clicked()
+                {
+                    match screen_cap::take_full_screenshot(ctx) {
+                        Ok(image) => {
+                            self.is_captured = true;
+                            self.screenshot_img = Some(image);
+                        }
+                        Err(e) => {
+                            eprintln!("Screenshot failed: {}", e);
+                        }
+                    }
+                }
+            });
             ui.add_space(3.0);
 
             ui.heading("Response:");
@@ -115,6 +136,12 @@ impl eframe::App for MyApp {
                     );
                 } else {
                     ui.label("No response yet...");
+                }
+
+                if let Some(ref texture) = self.screenshot_img {
+                    ui.separator();
+                    ui.label("Screenshot:");
+                    ui.image(texture);
                 }
             });
 

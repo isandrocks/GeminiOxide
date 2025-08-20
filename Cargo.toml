@@ -1,6 +1,6 @@
 [package]
-name = "ol_spell"
-version = "0.1.0"
+name = "Gemini_Interface"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]
@@ -13,6 +13,7 @@ serde = "1.0.217"
 serde_json = "1.0.134"
 tokio = { version = "1", features = ["full"] }
 dotenv = "0.15"
+screenshots = "0.8"
 
 [build-dependencies]
 winres = "0.1"
