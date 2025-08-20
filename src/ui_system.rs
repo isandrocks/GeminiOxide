@@ -1,9 +1,9 @@
+use crate::screen_cap;
+use crate::utils::spawn_async_request;
 use eframe::egui;
 use egui::{Spinner, TextureHandle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::thread::JoinHandle;
-use crate::screen_cap;
-use crate::utils::spawn_async_request;
 
 pub struct UIState {
     pub prompt: String,
@@ -64,7 +64,11 @@ impl UIState {
         should_generate
     }
 
-    pub fn render_action_buttons(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context) -> (bool, bool) {
+    pub fn render_action_buttons(
+        &mut self,
+        app_ui: &mut egui::Ui,
+        ctx: &egui::Context,
+    ) -> (bool, bool) {
         let mut should_generate = false;
         let mut screenshot_taken = false;
 
@@ -81,7 +85,7 @@ impl UIState {
                 .clicked()
             {
                 match screen_cap::take_full_screenshot(ctx) {
-                    Ok(image) => {                        
+                    Ok(image) => {
                         self.screenshot_img = Some(image);
                         screenshot_taken = true;
                     }
@@ -105,11 +109,7 @@ impl UIState {
                 ui.label(format!("Prompt: {}", self.last_prompt));
                 ui.separator();
 
-                CommonMarkViewer::new().show(
-                    ui,
-                    &mut self.commonmark_cache,
-                    &self.llm_response,
-                );
+                CommonMarkViewer::new().show(ui, &mut self.commonmark_cache, &self.llm_response);
             } else {
                 ui.label("No response yet...");
             }
@@ -117,7 +117,12 @@ impl UIState {
             if let Some(ref texture) = self.screenshot_img {
                 ui.separator();
                 ui.label("Screenshot:");
-                ui.image(texture);
+                
+                let available_width = ui.available_width();
+                ui.add(
+                    egui::Image::from_texture(texture)
+                        .fit_to_exact_size(egui::Vec2::new(available_width, available_width * 0.6)),
+                );
             }
         });
     }
