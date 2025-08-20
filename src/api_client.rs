@@ -2,9 +2,7 @@ use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
 use std::env;
-use std::sync::Arc;
 use std::thread::JoinHandle;
-use egui;
 use tokio::runtime::Runtime;
 
 pub async fn send_request(prompt: String) -> Result<String, Box<dyn std::error::Error>> {
@@ -46,33 +44,6 @@ pub async fn send_request(prompt: String) -> Result<String, Box<dyn std::error::
         .unwrap_or("No response text found");
 
     Ok(response_value.to_string())
-}
-
-pub fn load_image_from_bytes(bytes: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    // Use image crate to decode the embedded bytes
-    let img = image::load_from_memory(bytes)?.to_rgba8();
-
-    Ok(img.into_raw())
-}
-
-pub fn create_app_icon(image_bytes: &[u8], width: u32, height: u32) -> Result<egui::IconData, Box<dyn std::error::Error>> {
-    let rgba_data = load_image_from_bytes(image_bytes)?;
-    
-    Ok(egui::IconData {
-        rgba: rgba_data,
-        width,
-        height,
-    })
-}
-
-pub fn create_viewport_with_icon(title: &str, icon_bytes: &[u8]) -> Result<egui::ViewportBuilder, Box<dyn std::error::Error>> {
-    let icon = create_app_icon(icon_bytes, 32, 32)?;
-    
-    Ok(egui::ViewportBuilder {
-        title: Some(title.to_string()),
-        icon: Some(Arc::new(icon)),
-        ..egui::ViewportBuilder::default()
-    })
 }
 
 pub fn spawn_async_request(prompt: String) -> JoinHandle<Result<String, ()>> {

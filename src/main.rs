@@ -1,10 +1,9 @@
 #![windows_subsystem = "windows"]
 use eframe::{egui, NativeOptions};
-mod utils;
-mod screen_cap;
-mod ui_system;
-use utils::create_viewport_with_icon;
-use ui_system::UIState;
+mod api_client;
+mod img_utils;
+mod ui_components;
+use ui_components::{UIState, create_viewport_with_icon};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok(); // just for the API key secret

@@ -1,8 +1,9 @@
-use crate::screen_cap;
-use crate::utils::spawn_async_request;
+use crate::img_utils;
+use crate::api_client::spawn_async_request;
 use eframe::egui;
 use egui::{Spinner, TextureHandle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 
 pub struct UIState {
@@ -12,7 +13,7 @@ pub struct UIState {
     pub is_loading: bool,
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
-    pub screenshot_img: Option<TextureHandle>,
+    pub captured_img: Option<TextureHandle>,
 }
 
 impl Default for UIState {
@@ -24,7 +25,7 @@ impl Default for UIState {
             is_loading: false,
             client_thread: None,
             commonmark_cache: CommonMarkCache::default(),
-            screenshot_img: None,
+            captured_img: None,
         }
     }
 }
@@ -84,9 +85,9 @@ impl UIState {
                 .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
                 .clicked()
             {
-                match screen_cap::take_full_screenshot(ctx) {
+                match img_utils::take_full_screenshot(ctx) {
                     Ok(image) => {
-                        self.screenshot_img = Some(image);
+                        self.captured_img = Some(image);
                         screenshot_taken = true;
                     }
                     Err(e) => {
@@ -114,9 +115,9 @@ impl UIState {
                 ui.label("No response yet...");
             }
 
-            if let Some(ref texture) = self.screenshot_img {
+            if let Some(ref texture) = self.captured_img {
                 ui.separator();
-                ui.label("Screenshot:");
+                ui.label("Image:");
                 
                 let available_width = ui.available_width();
                 ui.add(
@@ -144,4 +145,14 @@ impl UIState {
             }
         }
     }
+}
+
+pub fn create_viewport_with_icon(title: &str, icon_bytes: &[u8]) -> Result<egui::ViewportBuilder, Box<dyn std::error::Error>> {
+    let icon = crate::img_utils::create_app_icon(icon_bytes, 32, 32)?;
+    
+    Ok(egui::ViewportBuilder {
+        title: Some(title.to_string()),
+        icon: Some(Arc::new(icon)),
+        ..egui::ViewportBuilder::default()
+    })
 }
