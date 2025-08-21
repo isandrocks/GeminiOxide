@@ -1,8 +1,8 @@
 use arboard::Clipboard;
 use eframe::egui;
 use egui::TextureHandle;
-use image::RgbaImage;
 use screenshots::Screen;
+use std::path::Path;
 
 pub fn take_full_screenshot(ctx: &egui::Context) -> Result<TextureHandle, String> {
     let screens = Screen::all().map_err(|e| format!("Failed to get screens: {}", e))?;
@@ -48,31 +48,123 @@ pub fn image_from_clipboard(ctx: &egui::Context) -> Result<TextureHandle, String
 
     match clipboard.get_image() {
         Ok(img_data) => {
-            let width = img_data
-                .width
-                .try_into()
-                .map_err(|_| "Invalid image width")?;
-            let height = img_data
-                .height
-                .try_into()
-                .map_err(|_| "Invalid image height")?;
-
-            // Convert to ImageBuffer
-            let buffer: RgbaImage = RgbaImage::from_raw(width, height, img_data.bytes.into_owned())
-                .ok_or("Failed to create image buffer from raw data")?;
-
-            let size = [width as usize, height as usize];
-            let pixels = buffer.into_raw();
-
-            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
-            let texture = ctx.load_texture(
-                "clipboard_image",
-                color_image,
-                egui::TextureOptions::default(),
-            );
-
-            return Ok(texture);
+            return process_image_data(ctx, img_data);
         }
-        Err(_) => Err("No image data found in clipboard".to_string()),
+        Err(_) => {
+            match clipboard.get_text() {
+                Ok(text) => {
+                    // Clean up the text - remove quotes and whitespace
+                    let cleaned_text = text.trim().trim_matches('"');
+                    let path = Path::new(cleaned_text);
+                    if path.exists() && is_image_file(&path) {
+                        return load_image_from_file(ctx, cleaned_text);
+                    } else {
+                        // Try to check if it's a Windows file path with different formatting
+                        if let Some(file_path) = extract_file_path_from_text(&text) {
+                            let path = Path::new(&file_path);
+                            if path.exists() && is_image_file(&path) {
+                                return load_image_from_file(ctx, &file_path);
+                            }
+                        }
+                        return Err(format!("Clipboard contains text '{}' but not a valid image file path", text));
+                    }
+                }
+                Err(_) => {
+                    return Err("No image found in clipboard.\n\nTo paste an image, try one of these methods:\n1. Right-click an image in a browser and select 'Copy Image'\n2. Take a screenshot (Ctrl+Shift+S)\n3. Copy the file path manually:\n   - Right-click image file → Properties → Copy path\n   - Or hold Shift + Right-click → 'Copy as path'".to_string());
+                }
+            }
+        }
     }
+}
+
+fn process_image_data(ctx: &egui::Context, img_data: arboard::ImageData) -> Result<TextureHandle, String> {
+    let width = img_data.width.try_into()
+        .map_err(|_| "Invalid image width")?;
+    let height = img_data.height.try_into()
+        .map_err(|_| "Invalid image height")?;
+    let mut pixels = img_data.bytes.into_owned();
+
+    // Check if all pixels are transparent - copying from firefox fix
+    let all_transparent = pixels.chunks_exact(4).all(|chunk| chunk[3] == 0);
+    
+    if all_transparent {
+        
+        for chunk in pixels.chunks_exact_mut(4) {
+            if chunk[0] != 0 || chunk[1] != 0 || chunk[2] != 0 {
+                // If RGB values exist but alpha is 0, set alpha to 255
+                chunk[3] = 255;
+            }
+        }
+        
+        // If that didn't work, try a different approach - set all non-black pixels to opaque
+        let still_all_transparent = pixels.chunks_exact(4).all(|chunk| chunk[3] == 0);
+        if still_all_transparent {
+            for chunk in pixels.chunks_exact_mut(4) {
+                if chunk[0] != 0 || chunk[1] != 0 || chunk[2] != 0 {
+                    chunk[3] = 255;
+                } else {
+                    // For completely black pixels, try setting them to white with full alpha
+                    chunk[0] = 128; // Set to gray to see if there's any data
+                    chunk[1] = 128;
+                    chunk[2] = 128;
+                    chunk[3] = 255;
+                }
+            }
+        }
+    }
+
+    let size = [width, height];
+
+    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+    let texture = ctx.load_texture("clipboard_image", color_image, egui::TextureOptions::default());
+
+    Ok(texture)
+}
+
+fn is_image_file(path: &Path) -> bool {
+    if let Some(extension) = path.extension() {
+        matches!(
+            extension.to_string_lossy().to_lowercase().as_str(),
+            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "tiff" | "ico" | "tga"
+        )
+    } else {
+        false
+    }
+}
+
+fn load_image_from_file(ctx: &egui::Context, file_path: &str) -> Result<TextureHandle, String> {
+    let img = image::open(file_path)
+        .map_err(|e| format!("Failed to open image file: {}", e))?
+        .to_rgba8();
+
+    let size = [img.width() as usize, img.height() as usize];
+    let pixels = img.into_raw();
+
+    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+    let texture = ctx.load_texture("clipboard_image", color_image, egui::TextureOptions::default());
+
+    Ok(texture)
+}
+
+fn extract_file_path_from_text(text: &str) -> Option<String> {
+    let trimmed = text.trim();
+
+    // Check if it looks like a Windows path
+    if trimmed.len() > 3 && trimmed.chars().nth(1) == Some(':') {
+        return Some(trimmed.to_string());
+    }
+
+    // Check for file:// URLs
+    if trimmed.starts_with("file://") {
+        let path = trimmed.strip_prefix("file:///")?;
+        return Some(path.replace('/', "\\"));
+    }
+
+    // Check for quoted paths
+    if trimmed.starts_with('"') && trimmed.ends_with('"') {
+        let unquoted = &trimmed[1..trimmed.len()-1];
+        return Some(unquoted.to_string());
+    }
+
+    None
 }

@@ -101,44 +101,63 @@ impl UIState {
                 .clicked()
             {
                 self.show_image_buttons = !self.show_image_buttons;
+                self.clear_error();
+            }
+
+            if let Some(ref _texture) = self.captured_img {
+                if ui.add_enabled(!self.is_loading, egui::Button::new("Clear Image")).clicked() {
+                    self.captured_img = None;
+                    self.clear_error();
+                }
             }
         });
 
         if self.show_image_buttons {
-            app_ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
-                    .clicked()
-                {
-                    match img_utils::take_full_screenshot(ctx) {
-                        Ok(image) => {
-                            self.captured_img = Some(image);
-                            screenshot_taken = true;
-                            self.show_image_buttons = false;
-                            self.clear_error();
+            egui::Window::new("Image Options")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
+                            .clicked()
+                        {
+                            match img_utils::take_full_screenshot(ctx) {
+                                Ok(image) => {
+                                    self.captured_img = Some(image);
+                                    screenshot_taken = true;
+                                    self.show_image_buttons = false;
+                                    self.clear_error();
+                                }
+                                Err(e) => {
+                                    self.set_error(format!("Screenshot failed: {}", e));
+                                }
+                            }
                         }
-                        Err(e) => {
-                            self.set_error(format!("Screenshot failed: {}", e));
-                        }
-                    }
-                }
 
-                if ui
-                    .add_enabled(!self.is_loading, egui::Button::new("Paste Image"))
-                    .clicked()
-                {
-                    match img_utils::image_from_clipboard(ctx) {
-                        Ok(image) => {
-                            self.captured_img = Some(image);
+                        if ui
+                            .add_enabled(!self.is_loading, egui::Button::new("Paste Image"))
+                            .clicked()
+                        {
+                            match img_utils::image_from_clipboard(ctx) {
+                                Ok(image) => {
+                                    self.captured_img = Some(image);
+                                    self.show_image_buttons = false;
+                                    self.clear_error();
+                                }
+                                Err(e) => {
+                                    self.set_error(format!("Failed to paste image: {}", e));
+                                }
+                            }
+                        }
+
+                        if ui.button("Cancel").clicked() {
                             self.show_image_buttons = false;
-                            self.clear_error();
+                            self.clear_error();                            
                         }
-                        Err(e) => {
-                            self.set_error(format!("Failed to paste image: {}", e));
-                        }
-                    }
-                }
-            });
+                    });
+                });
         }
         app_ui.add_space(3.0);
 
@@ -172,27 +191,17 @@ impl UIState {
     }
 
     pub fn render_error_section(&mut self, ctx: &egui::Context) {
-        let mut should_clear_error = false;
-
         egui::TopBottomPanel::bottom("error_message").show(ctx, |ui| {
             ui.separator();
             ui.horizontal(|ui| {
                 if let Some(ref error) = self.error_message {
                     ui.colored_label(egui::Color32::RED, "⚠ Error:");
                     ui.colored_label(egui::Color32::RED, error);
-                    if ui.small_button("✖").clicked() {
-                        should_clear_error = true;
-                    }
                 } else {
                     ui.label(" ");
                 }
             });
         });
-
-        // Clear error after the closure has finished
-        if should_clear_error {
-            self.clear_error();
-        }
     }
 
     pub fn render_loading_indicator(&mut self, ctx: &egui::Context) {
