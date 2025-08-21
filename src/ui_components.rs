@@ -14,6 +14,8 @@ pub struct UIState {
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
     pub captured_img: Option<TextureHandle>,
+    pub show_image_buttons: bool,
+    pub error_message: Option<String>,
 }
 
 impl Default for UIState {
@@ -26,6 +28,8 @@ impl Default for UIState {
             client_thread: None,
             commonmark_cache: CommonMarkCache::default(),
             captured_img: None,
+            show_image_buttons: false,
+            error_message: None,
         }
     }
 }
@@ -43,6 +47,14 @@ impl UIState {
             self.llm_response.clear();
             self.client_thread = Some(spawn_async_request(prompt));
         }
+    }
+
+    pub fn set_error(&mut self, error: String) {
+        self.error_message = Some(error);
+    }
+
+    pub fn clear_error(&mut self) {
+        self.error_message = None;
     }
 
     pub fn render_prompt_section(&mut self, app_ui: &mut egui::Ui) -> bool {
@@ -65,11 +77,7 @@ impl UIState {
         should_generate
     }
 
-    pub fn render_action_buttons(
-        &mut self,
-        app_ui: &mut egui::Ui,
-        ctx: &egui::Context,
-    ) -> (bool, bool) {
+    pub fn render_action_buttons(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context,) -> (bool, bool) {
         let mut should_generate = false;
         let mut screenshot_taken = false;
 
@@ -79,37 +87,59 @@ impl UIState {
                 .clicked()
             {
                 should_generate = true;
+                self.clear_error();
             }
 
-            if ui
-                .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
-                .clicked()
-            {
-                match img_utils::take_full_screenshot(ctx) {
-                    Ok(image) => {
-                        self.captured_img = Some(image);
-                        screenshot_taken = true;
-                    }
-                    Err(e) => {
-                        eprintln!("Screenshot failed: {}", e);
-                    }
-                }
-            }
+            let button_text = if self.show_image_buttons {
+                "Hide Image Options"
+            } else {
+                "Add Image"
+            };
 
             if ui
-                .add_enabled(!self.is_loading, egui::Button::new("Paste Image"))
+                .add_enabled(!self.is_loading, egui::Button::new(button_text))
                 .clicked()
             {
-                match img_utils::image_from_clipboard(ctx) {
-                    Ok(image) => {
-                        self.captured_img = Some(image);
-                    }
-                    Err(e) => {
-                        eprintln!("Copy failed: {}", e);
-                    }
-                }
+                self.show_image_buttons = !self.show_image_buttons;
             }
         });
+
+        if self.show_image_buttons {
+            app_ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
+                    .clicked()
+                {
+                    match img_utils::take_full_screenshot(ctx) {
+                        Ok(image) => {
+                            self.captured_img = Some(image);
+                            screenshot_taken = true;
+                            self.show_image_buttons = false;
+                            self.clear_error();
+                        }
+                        Err(e) => {
+                            self.set_error(format!("Screenshot failed: {}", e));
+                        }
+                    }
+                }
+
+                if ui
+                    .add_enabled(!self.is_loading, egui::Button::new("Paste Image"))
+                    .clicked()
+                {
+                    match img_utils::image_from_clipboard(ctx) {
+                        Ok(image) => {
+                            self.captured_img = Some(image);
+                            self.show_image_buttons = false;
+                            self.clear_error();
+                        }
+                        Err(e) => {
+                            self.set_error(format!("Failed to paste image: {}", e));
+                        }
+                    }
+                }
+            });
+        }
         app_ui.add_space(3.0);
 
         (should_generate, screenshot_taken)
@@ -141,7 +171,31 @@ impl UIState {
         });
     }
 
-    pub fn render_loading_indicator(&mut self, _app_ui: &mut egui::Ui, ctx: &egui::Context) {
+    pub fn render_error_section(&mut self, ctx: &egui::Context) {
+        let mut should_clear_error = false;
+
+        egui::TopBottomPanel::bottom("error_message").show(ctx, |ui| {
+            ui.separator();
+            ui.horizontal(|ui| {
+                if let Some(ref error) = self.error_message {
+                    ui.colored_label(egui::Color32::RED, "⚠ Error:");
+                    ui.colored_label(egui::Color32::RED, error);
+                    if ui.small_button("✖").clicked() {
+                        should_clear_error = true;
+                    }
+                } else {
+                    ui.label(" ");
+                }
+            });
+        });
+
+        // Clear error after the closure has finished
+        if should_clear_error {
+            self.clear_error();
+        }
+    }
+
+    pub fn render_loading_indicator(&mut self, ctx: &egui::Context) {
         if self.is_loading {
             egui::Window::new("Loading")
                 .collapsible(false)

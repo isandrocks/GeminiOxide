@@ -42,7 +42,8 @@ impl eframe::App for MyApp {
             }
 
             self.ui_state.render_response_section(ui);
-            self.ui_state.render_loading_indicator(ui, ctx);
+            self.ui_state.render_error_section(ctx);
+            self.ui_state.render_loading_indicator(ctx);
         });
     }
 }
