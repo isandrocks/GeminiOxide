@@ -1,6 +1,40 @@
+# Build artifacts
 /target
+Cargo.lock
+
+# Environment and secrets
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.*
+config.local.*
+
+# Development environments
 /.venv
 /.misc
 /.vscode
 /firefox_test
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+/logs/
+/tmp/
