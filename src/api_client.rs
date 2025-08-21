@@ -9,6 +9,15 @@ pub async fn send_request(prompt: String) -> Result<String, Box<dyn std::error::
     // Get API key from environment variable
     let api_key =
         env::var("GEMINI_API_KEY").map_err(|_| "GEMINI_API_KEY environment variable not set")?;
+    
+    // Basic API key validation
+    if api_key.is_empty() {
+        return Err("GEMINI_API_KEY is empty".into());
+    }
+    
+    if api_key.contains("your-actual-api-key-here") || api_key.contains("placeholder") {
+        return Err("Please set a valid GEMINI_API_KEY in your .env file (copy from .env.example)".into());
+    }
 
     let client = Client::new();
     let res = client
