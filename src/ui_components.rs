@@ -77,7 +77,11 @@ impl UIState {
         should_generate
     }
 
-    pub fn render_action_buttons(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context,) -> (bool, bool) {
+    pub fn render_action_buttons(
+        &mut self,
+        app_ui: &mut egui::Ui,
+        ctx: &egui::Context,
+    ) -> (bool, bool) {
         let mut should_generate = false;
         let mut screenshot_taken = false;
 
@@ -88,6 +92,7 @@ impl UIState {
             {
                 should_generate = true;
                 self.clear_error();
+                self.show_image_buttons = false;
             }
 
             let button_text = if self.show_image_buttons {
@@ -105,7 +110,10 @@ impl UIState {
             }
 
             if let Some(ref _texture) = self.captured_img {
-                if ui.add_enabled(!self.is_loading, egui::Button::new("Clear Image")).clicked() {
+                if ui
+                    .add_enabled(!self.is_loading, egui::Button::new("Clear Image"))
+                    .clicked()
+                {
                     self.captured_img = None;
                     self.clear_error();
                 }
@@ -154,7 +162,7 @@ impl UIState {
 
                         if ui.button("Cancel").clicked() {
                             self.show_image_buttons = false;
-                            self.clear_error();                            
+                            self.clear_error();
                         }
                     });
                 });
