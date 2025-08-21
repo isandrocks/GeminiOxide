@@ -95,6 +95,20 @@ impl UIState {
                     }
                 }
             }
+
+            if ui
+                .add_enabled(!self.is_loading, egui::Button::new("Paste Image"))
+                .clicked()
+            {
+                match img_utils::image_from_clipboard(ctx) {
+                    Ok(image) => {
+                        self.captured_img = Some(image);
+                    }
+                    Err(e) => {
+                        eprintln!("Copy failed: {}", e);
+                    }
+                }
+            }
         });
         app_ui.add_space(3.0);
 
@@ -118,19 +132,28 @@ impl UIState {
             if let Some(ref texture) = self.captured_img {
                 ui.separator();
                 ui.label("Image:");
-
-                let available_width = ui.available_width();
                 ui.add(
                     egui::Image::from_texture(texture)
-                        .fit_to_exact_size(egui::Vec2::new(available_width, available_width * 0.6)),
+                        .max_width(ui.available_width())
+                        .maintain_aspect_ratio(true),
                 );
             }
         });
     }
 
-    pub fn render_loading_indicator(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context) {
+    pub fn render_loading_indicator(&mut self, _app_ui: &mut egui::Ui, ctx: &egui::Context) {
         if self.is_loading {
-            app_ui.add(Spinner::default().size(16.0).color(egui::Color32::RED));
+            egui::Window::new("Loading")
+                .collapsible(false)
+                .resizable(false)
+                .title_bar(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.add(Spinner::default().size(20.0).color(egui::Color32::RED));
+                        ui.label("Processing request...");
+                    });
+                });
 
             if let Some(handle) = self.client_thread.take() {
                 if handle.is_finished() {

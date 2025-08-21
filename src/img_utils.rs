@@ -1,5 +1,7 @@
+use arboard::Clipboard;
 use eframe::egui;
 use egui::TextureHandle;
+use image::RgbaImage;
 use screenshots::Screen;
 
 pub fn take_full_screenshot(ctx: &egui::Context) -> Result<TextureHandle, String> {
@@ -38,4 +40,39 @@ pub fn create_app_icon(
         width,
         height,
     })
+}
+
+pub fn image_from_clipboard(ctx: &egui::Context) -> Result<TextureHandle, String> {
+    let mut clipboard =
+        Clipboard::new().map_err(|e| format!("Failed to create clipboard: {}", e))?;
+
+    match clipboard.get_image() {
+        Ok(img_data) => {
+            let width = img_data
+                .width
+                .try_into()
+                .map_err(|_| "Invalid image width")?;
+            let height = img_data
+                .height
+                .try_into()
+                .map_err(|_| "Invalid image height")?;
+
+            // Convert to ImageBuffer
+            let buffer: RgbaImage = RgbaImage::from_raw(width, height, img_data.bytes.into_owned())
+                .ok_or("Failed to create image buffer from raw data")?;
+
+            let size = [width as usize, height as usize];
+            let pixels = buffer.into_raw();
+
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+            let texture = ctx.load_texture(
+                "clipboard_image",
+                color_image,
+                egui::TextureOptions::default(),
+            );
+
+            return Ok(texture);
+        }
+        Err(_) => Err("No image data found in clipboard".to_string()),
+    }
 }
