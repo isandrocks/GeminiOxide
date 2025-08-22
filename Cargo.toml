@@ -1,7 +1,16 @@
 [package]
-name = "Gemini_Interface"
+name = "gemini-oxide"
 version = "0.2.0"
 edition = "2021"
+description = "A Rust GUI application that provides an interface to Google's Gemini AI, with support for text prompts and image inputs"
+authors = ["isandrocks"]
+license = "MIT"
+repository = "https://github.com/isandrocks/GeminiOxide"
+homepage = "https://github.com/isandrocks/GeminiOxide"
+documentation = "https://github.com/isandrocks/GeminiOxide#readme"
+keywords = ["gemini", "ai", "gui", "egui", "rust"]
+categories = ["gui", "command-line-utilities"]
+readme = "README.md"
 
 [dependencies]
 eframe = "0.30.0"

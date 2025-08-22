@@ -1,4 +1,4 @@
-# AI Interface
+# GeminiOxide
 
 A Rust GUI application that provides an interface to Google's Gemini AI, with support for text prompts and image inputs.
 
@@ -27,13 +27,13 @@ A Rust GUI application that provides an interface to Google's Gemini AI, with su
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/isandrocks/AI_interface.git
-   cd AI_interface
+   git clone https://github.com/isandrocks/GeminiOxide.git
+   cd GeminiOxide
    ```
 
 2. Set up your environment variables:
    ```bash
-   cp src/.env.example .env
+   cp .env.example .env
    # Edit .env and set GEMINI_API_KEY=your-actual-api-key-here
    ```
 
