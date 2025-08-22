@@ -8,8 +8,9 @@ use std::env;
 use std::thread::JoinHandle;
 use tokio::runtime::Runtime;
 
-// Helper function to convert RGBA bytes to PNG
+
 fn rgba_to_png(
+// this might be redundent. i will have to look into it later    
     rgba_data: &[u8],
     width: u32,
     height: u32,
@@ -100,7 +101,8 @@ pub async fn send_request(
 
     let res_json: Value = res.json().await?;
 
-    // JSON Drilling for Text or it responds with a failure notice
+    // JSON Drilling for Text or it responds with a failure notice 
+    // It will need to be reconfigured if i want to recieve images
     let response_value = res_json
         .get("candidates")
         .and_then(|candidates| candidates.get(0))
