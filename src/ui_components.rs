@@ -1,7 +1,7 @@
 use crate::api_client::spawn_async_request;
 use crate::img_utils;
 use eframe::egui;
-use egui::{Spinner, TextureHandle, ColorImage};
+use egui::{ColorImage, Spinner, TextureHandle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -14,7 +14,7 @@ pub struct UIState {
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
     pub captured_img: Option<ColorImage>,
-    pub captured_img_texture: Option<TextureHandle>, // Cache the texture
+    pub captured_img_texture: Option<TextureHandle>, 
     pub show_image_buttons: bool,
     pub error_message: Option<String>,
 }
@@ -51,7 +51,6 @@ impl UIState {
         }
     }
 
-    // Helper method to get or create texture from ColorImage
     pub fn get_image_texture(&mut self, ctx: &egui::Context) -> Option<&TextureHandle> {
         if let Some(ref color_img) = self.captured_img {
             if self.captured_img_texture.is_none() {

@@ -1,23 +1,27 @@
+use base64::{engine::general_purpose, Engine as _};
 use egui::ColorImage;
+use image::{DynamicImage, ImageBuffer, ImageFormat, RgbaImage};
 use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
 use std::env;
 use std::thread::JoinHandle;
 use tokio::runtime::Runtime;
-use base64::{engine::general_purpose, Engine as _};
-use image::{ImageBuffer, RgbaImage, DynamicImage, ImageFormat};
 
 // Helper function to convert RGBA bytes to PNG
-fn rgba_to_png(rgba_data: &[u8], width: u32, height: u32) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn rgba_to_png(
+    rgba_data: &[u8],
+    width: u32,
+    height: u32,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let img: RgbaImage = ImageBuffer::from_raw(width, height, rgba_data.to_vec())
         .ok_or("Failed to create image buffer from RGBA data")?;
-    
+
     let dynamic_img = DynamicImage::ImageRgba8(img);
     let mut png_data = Vec::new();
-    
+
     dynamic_img.write_to(&mut std::io::Cursor::new(&mut png_data), ImageFormat::Png)?;
-    
+
     Ok(png_data)
 }
 
@@ -44,20 +48,17 @@ pub async fn send_request(
 
     let mut parts = Vec::new();
 
-    // Add image data if provided (should come first)
     if let Some(img) = image_data {
-        // Convert ColorImage to PNG bytes
         let [width, height] = img.size;
-        
-        // ColorImage pixels are stored as Color32, each with r, g, b, a as u8
-        let rgba_bytes: Vec<u8> = img.pixels.iter().flat_map(|color| {
-            [color.r(), color.g(), color.b(), color.a()]
-        }).collect();
 
-        // Convert RGBA to PNG using the image crate
+        let rgba_bytes: Vec<u8> = img
+            .pixels
+            .iter()
+            .flat_map(|color| [color.r(), color.g(), color.b(), color.a()])
+            .collect();
+
         let png_bytes = rgba_to_png(&rgba_bytes, width as u32, height as u32)?;
 
-        // Encode PNG bytes to base64 string
         let base64_data = general_purpose::STANDARD.encode(&png_bytes);
 
         let image_part = json!({
@@ -66,11 +67,10 @@ pub async fn send_request(
                 "data": base64_data
             }
         });
-        
+
         parts.push(image_part);
     }
 
-    // Add text part (comes after image, if present)
     parts.push(json!({
         "text": prompt
     }));
@@ -89,10 +89,12 @@ pub async fn send_request(
         .send()
         .await?;
 
-    // Check if the response was successful and get more details if not
     if !res.status().is_success() {
         let status = res.status();
-        let error_text = res.text().await.unwrap_or_else(|_| "Failed to read error response".to_string());
+        let error_text = res
+            .text()
+            .await
+            .unwrap_or_else(|_| "Failed to read error response".to_string());
         return Err(format!("HTTP Error {}: {}", status, error_text).into());
     }
 
