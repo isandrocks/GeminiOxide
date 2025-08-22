@@ -1,7 +1,7 @@
 use crate::api_client::spawn_async_request;
 use crate::img_utils;
 use eframe::egui;
-use egui::{Spinner, TextureHandle};
+use egui::{Spinner, TextureHandle, ColorImage};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -13,7 +13,8 @@ pub struct UIState {
     pub is_loading: bool,
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
-    pub captured_img: Option<TextureHandle>,
+    pub captured_img: Option<ColorImage>,
+    pub captured_img_texture: Option<TextureHandle>, // Cache the texture
     pub show_image_buttons: bool,
     pub error_message: Option<String>,
 }
@@ -28,6 +29,7 @@ impl Default for UIState {
             client_thread: None,
             commonmark_cache: CommonMarkCache::default(),
             captured_img: None,
+            captured_img_texture: None,
             show_image_buttons: false,
             error_message: None,
         }
@@ -43,9 +45,26 @@ impl UIState {
         if !self.is_loading && !prompt.trim().is_empty() {
             self.is_loading = true;
             self.last_prompt = prompt.clone();
+            self.client_thread = Some(spawn_async_request(prompt, self.captured_img.clone()));
             self.prompt.clear();
             self.llm_response.clear();
-            self.client_thread = Some(spawn_async_request(prompt));
+        }
+    }
+
+    // Helper method to get or create texture from ColorImage
+    pub fn get_image_texture(&mut self, ctx: &egui::Context) -> Option<&TextureHandle> {
+        if let Some(ref color_img) = self.captured_img {
+            if self.captured_img_texture.is_none() {
+                let texture = ctx.load_texture(
+                    "captured_image",
+                    color_img.clone(),
+                    egui::TextureOptions::default(),
+                );
+                self.captured_img_texture = Some(texture);
+            }
+            self.captured_img_texture.as_ref()
+        } else {
+            None
         }
     }
 
@@ -83,7 +102,7 @@ impl UIState {
         ctx: &egui::Context,
     ) -> (bool, bool) {
         let mut should_generate = false;
-        let mut screenshot_taken = false;
+        let mut img_context = false;
 
         app_ui.horizontal(|ui| {
             if ui
@@ -109,12 +128,13 @@ impl UIState {
                 self.clear_error();
             }
 
-            if let Some(ref _texture) = self.captured_img {
+            if let Some(ref _color_image) = self.captured_img {
                 if ui
                     .add_enabled(!self.is_loading, egui::Button::new("Clear Image"))
                     .clicked()
                 {
                     self.captured_img = None;
+                    self.captured_img_texture = None; // Clear texture cache
                     self.clear_error();
                 }
             }
@@ -132,9 +152,10 @@ impl UIState {
                             .clicked()
                         {
                             match img_utils::take_full_screenshot(ctx) {
-                                Ok(image) => {
-                                    self.captured_img = Some(image);
-                                    screenshot_taken = true;
+                                Ok(color_image) => {
+                                    self.captured_img = Some(color_image);
+                                    self.captured_img_texture = None; // Clear texture cache to force recreation
+                                    img_context = true;
                                     self.show_image_buttons = false;
                                     self.clear_error();
                                 }
@@ -149,8 +170,9 @@ impl UIState {
                             .clicked()
                         {
                             match img_utils::image_from_clipboard(ctx) {
-                                Ok(image) => {
-                                    self.captured_img = Some(image);
+                                Ok(color_image) => {
+                                    self.captured_img = Some(color_image);
+                                    self.captured_img_texture = None; // Clear texture cache to force recreation
                                     self.show_image_buttons = false;
                                     self.clear_error();
                                 }
@@ -169,10 +191,10 @@ impl UIState {
         }
         app_ui.add_space(3.0);
 
-        (should_generate, screenshot_taken)
+        (should_generate, img_context)
     }
 
-    pub fn render_response_section(&mut self, app_ui: &mut egui::Ui) {
+    pub fn render_response_section(&mut self, app_ui: &mut egui::Ui, ctx: &egui::Context) {
         app_ui.heading("Response:");
         app_ui.separator();
 
@@ -186,7 +208,7 @@ impl UIState {
                 ui.label("No response yet...");
             }
 
-            if let Some(ref texture) = self.captured_img {
+            if let Some(texture) = self.get_image_texture(ctx) {
                 ui.separator();
                 ui.label("Image:");
                 ui.add(

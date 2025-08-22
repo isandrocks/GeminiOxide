@@ -1,10 +1,10 @@
 use arboard::Clipboard;
 use eframe::egui;
-use egui::TextureHandle;
+use egui::ColorImage;
 use screenshots::Screen;
 use std::path::Path;
 
-pub fn take_full_screenshot(ctx: &egui::Context) -> Result<TextureHandle, String> {
+pub fn take_full_screenshot(_ctx: &egui::Context) -> Result<ColorImage, String> {
     let screens = Screen::all().map_err(|e| format!("Failed to get screens: {}", e))?;
     let screen = screens.first().ok_or("No screens found")?;
     let image = screen
@@ -16,9 +16,7 @@ pub fn take_full_screenshot(ctx: &egui::Context) -> Result<TextureHandle, String
 
     let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
 
-    let texture = ctx.load_texture("screenshot", color_image, egui::TextureOptions::default());
-
-    Ok(texture)
+    Ok(color_image)
 }
 
 pub fn load_image_from_bytes(bytes: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -40,7 +38,7 @@ pub fn create_app_icon(
     })
 }
 
-pub fn image_from_clipboard(ctx: &egui::Context) -> Result<TextureHandle, String> {
+pub fn image_from_clipboard(ctx: &egui::Context) -> Result<ColorImage, String> {
     let mut clipboard =
         Clipboard::new().map_err(|e| format!("Failed to create clipboard: {}", e))?;
 
@@ -75,9 +73,9 @@ pub fn image_from_clipboard(ctx: &egui::Context) -> Result<TextureHandle, String
 }
 
 fn process_image_data(
-    ctx: &egui::Context,
+    _ctx: &egui::Context,
     img_data: arboard::ImageData,
-) -> Result<TextureHandle, String> {
+) -> Result<ColorImage, String> {
     let width = img_data
         .width
         .try_into()
@@ -119,13 +117,8 @@ fn process_image_data(
     let size = [width, height];
 
     let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
-    let texture = ctx.load_texture(
-        "clipboard_image",
-        color_image,
-        egui::TextureOptions::default(),
-    );
 
-    Ok(texture)
+    Ok(color_image)
 }
 
 fn is_image_file(path: &Path) -> bool {
@@ -139,7 +132,7 @@ fn is_image_file(path: &Path) -> bool {
     }
 }
 
-fn load_image_from_file(ctx: &egui::Context, file_path: &str) -> Result<TextureHandle, String> {
+fn load_image_from_file(_ctx: &egui::Context, file_path: &str) -> Result<ColorImage, String> {
     let img = image::open(file_path)
         .map_err(|e| format!("Failed to open image file: {}", e))?
         .to_rgba8();
@@ -148,13 +141,8 @@ fn load_image_from_file(ctx: &egui::Context, file_path: &str) -> Result<TextureH
     let pixels = img.into_raw();
 
     let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
-    let texture = ctx.load_texture(
-        "clipboard_image",
-        color_image,
-        egui::TextureOptions::default(),
-    );
 
-    Ok(texture)
+    Ok(color_image)
 }
 
 fn extract_file_path_from_text(text: &str) -> Option<String> {

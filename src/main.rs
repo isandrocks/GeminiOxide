@@ -33,7 +33,7 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let should_generate_from_input = self.ui_state.render_prompt_section(ui);
-            let (should_generate_from_button, _screenshot_taken) =
+            let (should_generate_from_button, _img_context) =
                 self.ui_state.render_action_buttons(ui, ctx);
 
             if should_generate_from_input || should_generate_from_button {
@@ -41,7 +41,7 @@ impl eframe::App for MyApp {
                 self.ui_state.start_async_request(prompt_clone);
             }
 
-            self.ui_state.render_response_section(ui);
+            self.ui_state.render_response_section(ui, ctx);
             self.ui_state.render_error_section(ctx);
             self.ui_state.render_loading_indicator(ctx);
         });
