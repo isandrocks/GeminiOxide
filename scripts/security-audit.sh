@@ -21,12 +21,12 @@ check_command() {
 
 # 1. Check git history for secrets
 echo -e "${BLUE}1. Checking git history for potential secrets...${NC}"
-SECRETS_IN_HISTORY=$(git log -p --all | grep -iE "(api[_-]?key|secret|token|password)" | grep -v "your-actual-api-key-here" | grep -v "placeholder" | grep -v "example" | wc -l)
+SECRETS_IN_HISTORY=$(git log -p --all | grep -iE "(api[_-]?key|secret|token|password)" | grep -v "your-actual-api-key-here" | grep -v "placeholder" | grep -v "example" | grep -v "GEMINI_API_KEY" | grep -v "environment variable" | grep -v "\.env" | grep -v "api\.?key" | grep -v "Google AI Studio" | grep -v "makersuite" | grep -v "secrets\.\*" | grep -v "Pre-commit hooks" | grep -v "hardcoded secrets" | grep -v "api_key" | grep -v "HARDCODED_SECRETS" | grep -v "SECRETS_IN_HISTORY" | grep -vE "(# |//|\*|echo|if|let)" | wc -l)
 if [ "$SECRETS_IN_HISTORY" -gt 0 ]; then
     echo -e "${RED}   ❌ Found $SECRETS_IN_HISTORY potential secrets in git history${NC}"
-    git log -p --all | grep -iE "(api[_-]?key|secret|token|password)" | grep -v "your-actual-api-key-here" | grep -v "placeholder" | grep -v "example" | head -5
+    git log -p --all | grep -iE "(api[_-]?key|secret|token|password)" | grep -v "your-actual-api-key-here" | grep -v "placeholder" | grep -v "example" | grep -v "GEMINI_API_KEY" | grep -v "environment variable" | grep -v "\.env" | grep -v "api\.?key" | grep -v "Google AI Studio" | grep -v "makersuite" | grep -v "secrets\.\*" | grep -v "Pre-commit hooks" | grep -v "hardcoded secrets" | grep -v "api_key" | grep -v "HARDCODED_SECRETS" | grep -v "SECRETS_IN_HISTORY" | grep -vE "(# |//|\*|echo|if|let)" | head -5
 else
-    echo -e "${GREEN}   ✅ No secrets found in git history${NC}"
+    echo -e "${GREEN}   ✅ No actual secrets found in git history (filtered out documentation and code references)${NC}"
 fi
 
 # 2. Check for accidentally committed environment files

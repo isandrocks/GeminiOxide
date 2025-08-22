@@ -70,6 +70,20 @@ For detailed security guidelines, see [SECURITY.md](SECURITY.md).
 
 ## Development
 
+### Quick Start
+```bash
+# Set up development environment
+./scripts/dev.sh setup
+
+# Run the application
+./scripts/dev.sh run
+
+# Run all development commands
+./scripts/dev.sh help
+```
+
+### Manual Development
+
 ### Building
 ```bash
 cargo build
@@ -82,7 +96,10 @@ cargo test
 
 ### Security Audit
 ```bash
-# Check dependencies for vulnerabilities
+# Run comprehensive security audit
+./scripts/security-audit.sh
+
+# Check dependencies for vulnerabilities (requires cargo-audit)
 cargo audit
 
 # Search for potential secrets in code

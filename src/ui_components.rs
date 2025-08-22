@@ -14,7 +14,7 @@ pub struct UIState {
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
     pub captured_img: Option<ColorImage>,
-    pub captured_img_texture: Option<TextureHandle>, 
+    pub captured_img_texture: Option<TextureHandle>,
     pub show_image_buttons: bool,
     pub error_message: Option<String>,
 }
