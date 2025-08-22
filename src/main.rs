@@ -3,6 +3,7 @@ use eframe::{egui, NativeOptions};
 mod api_client;
 mod img_utils;
 mod ui_components;
+mod font_setup;
 use ui_components::{create_viewport_with_icon, UIState};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,7 +20,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     eframe::run_native(
         "GeminiOxide",
         custom_options,
-        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+        Box::new(|cc| {
+            // Load custom fonts for Asian character support
+            font_setup::setup_custom_fonts(&cc.egui_ctx);
+            Ok(Box::new(MyApp::default()))
+        }),
     )?;
     Ok(())
 }

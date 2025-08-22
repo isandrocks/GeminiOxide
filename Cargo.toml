@@ -1,6 +1,6 @@
 [package]
 name = "gemini-oxide"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "A Rust GUI application that provides an interface to Google's Gemini AI, with support for text prompts and image inputs"
 authors = ["isandrocks"]
