@@ -17,6 +17,7 @@ pub struct UIState {
     pub captured_img_texture: Option<TextureHandle>,
     pub show_image_buttons: bool,
     pub error_message: Option<String>,
+    pub first_frame: bool,
 }
 
 impl Default for UIState {
@@ -32,6 +33,7 @@ impl Default for UIState {
             captured_img_texture: None,
             show_image_buttons: false,
             error_message: None,
+            first_frame: true,
         }
     }
 }
@@ -85,6 +87,10 @@ impl UIState {
             egui::Layout::top_down_justified(egui::Align::Center),
             |ui| {
                 let response = ui.text_edit_singleline(&mut self.prompt);
+                if self.first_frame {
+                    response.request_focus();
+                    self.first_frame = false;
+                }
                 if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     should_generate = true;
                 }
@@ -251,6 +257,7 @@ impl UIState {
                 if handle.is_finished() {
                     if let Ok(res) = handle.join() {
                         self.is_loading = false;
+                        self.first_frame = true;
                         self.update_llm_response(res.unwrap());
                         ctx.request_repaint();
                     }
