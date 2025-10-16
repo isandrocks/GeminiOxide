@@ -8,9 +8,8 @@ use std::env;
 use std::thread::JoinHandle;
 use tokio::runtime::Runtime;
 
-
 fn rgba_to_png(
-// this might be redundent. i will have to look into it later    
+    // this might be redundent. i will have to look into it later
     rgba_data: &[u8],
     width: u32,
     height: u32,
@@ -28,6 +27,7 @@ fn rgba_to_png(
 
 pub async fn send_request(
     prompt: String,
+    ai_model: String,
     image_data: Option<ColorImage>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Get API key from environment variable
@@ -77,7 +77,10 @@ pub async fn send_request(
     }));
 
     let res = client
-        .post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
+        .post(format!(
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+            ai_model
+        ))
         .query(&[("key", &api_key)])
         .header("Content-Type", "application/json")
         .json(&json!({
@@ -101,7 +104,7 @@ pub async fn send_request(
 
     let res_json: Value = res.json().await?;
 
-    // JSON Drilling for Text or it responds with a failure notice 
+    // JSON Drilling for Text or it responds with a failure notice
     // It will need to be reconfigured if i want to recieve images
     let response_value = res_json
         .get("candidates")
@@ -118,11 +121,12 @@ pub async fn send_request(
 
 pub fn spawn_async_request(
     prompt: String,
+    ai_model: String,
     image_data: Option<ColorImage>,
 ) -> JoinHandle<Result<String, ()>> {
     std::thread::spawn(move || {
         let response = Runtime::new().unwrap().block_on(async {
-            send_request(prompt, image_data)
+            send_request(prompt, ai_model, image_data)
                 .await
                 .unwrap_or_else(|err| format!("Error: {}", err))
         });

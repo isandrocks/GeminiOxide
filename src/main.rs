@@ -1,9 +1,9 @@
 #![windows_subsystem = "windows"]
 use eframe::{egui, NativeOptions};
 mod api_client;
+mod font_setup;
 mod img_utils;
 mod ui_components;
-mod font_setup;
 use ui_components::{create_viewport_with_icon, UIState};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

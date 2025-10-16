@@ -18,6 +18,7 @@ pub struct UIState {
     pub show_image_buttons: bool,
     pub error_message: Option<String>,
     pub first_frame: bool,
+    pub ai_model: String,
 }
 
 impl Default for UIState {
@@ -34,6 +35,7 @@ impl Default for UIState {
             show_image_buttons: false,
             error_message: None,
             first_frame: true,
+            ai_model: "gemini-2.5-flash".to_string(),
         }
     }
 }
@@ -47,7 +49,12 @@ impl UIState {
         if !self.is_loading && !prompt.trim().is_empty() {
             self.is_loading = true;
             self.last_prompt = prompt.clone();
-            self.client_thread = Some(spawn_async_request(prompt, self.captured_img.clone()));
+            let sent_model = self.ai_model.clone();
+            self.client_thread = Some(spawn_async_request(
+                prompt,
+                sent_model,
+                self.captured_img.clone(),
+            ));
             self.prompt.clear();
             self.llm_response.clear();
         }
@@ -143,6 +150,26 @@ impl UIState {
                     self.clear_error();
                 }
             }
+
+            egui::ComboBox::new("ai_model_selector", "")
+                .selected_text(&self.ai_model)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.ai_model,
+                        "gemini-2.5-flash".to_string(),
+                        "gemini-2.5-flash",
+                    );
+                    ui.selectable_value(
+                        &mut self.ai_model,
+                        "gemini-2.5-pro".to_string(),
+                        "gemini-2.5-pro",
+                    );
+                    ui.selectable_value(
+                        &mut self.ai_model,
+                        "gemini-2.5-flash-lite".to_string(),
+                        "gemini-2.5-flash-lite",
+                    );
+                });
         });
 
         if self.show_image_buttons {
@@ -194,6 +221,7 @@ impl UIState {
                     });
                 });
         }
+
         app_ui.add_space(3.0);
 
         (should_generate, img_context)
