@@ -31,15 +31,29 @@ A Rust GUI application that provides an interface to Google's Gemini AI, with su
    cd GeminiOxide
    ```
 
-2. Set up your environment variables:
+2. Set up your `.env` file:
+   ```bash
+   # Create a .env file in the project root
+   echo GEMINI_API_KEY=your-actual-api-key-here > .env
+   ```
+   
+   Or copy from the example:
    ```bash
    cp .env.example .env
    # Edit .env and set GEMINI_API_KEY=your-actual-api-key-here
    ```
 
-3. Build and run:
+3. Build the application:
    ```bash
-   cargo run
+   cargo build --release
+   ```
+
+   The API key from your `.env` file will be compiled into the binary. You only need to distribute the `.exe` file - no separate `.env` file needed at runtime!
+
+4. Run the application:
+   ```bash
+   cargo run --release
+   # or run the executable directly from target/release/
    ```
 
 ## Usage
@@ -55,15 +69,17 @@ A Rust GUI application that provides an interface to Google's Gemini AI, with su
 This application handles API keys and should be used securely:
 
 ### API Key Safety
-- **NEVER** commit your `.env` file or API keys to version control
-- Use environment variables for all sensitive configuration
+- Keep your `.env` file with `GEMINI_API_KEY` in the project root during development
+- The API key is read from `.env` at build time and embedded into your binary
+- **NEVER** commit your `.env` file to version control (it should be in `.gitignore`)
+- **NEVER** share your compiled `.exe` file publicly - it contains your API key
+- Build separate binaries for different environments/users with their own API keys
 - Rotate your API keys regularly
 - Restrict API key usage in Google Cloud Console
 
 ### Security Features
-- Automatic `.env` file gitignore protection
+- API key compiled into binary at build time (no runtime `.env` file needed)
 - Pre-commit hooks to prevent accidental secret commits
-- Runtime API key validation
 - Comprehensive security documentation
 
 For detailed security guidelines, see [SECURITY.md](SECURITY.md).

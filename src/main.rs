@@ -7,8 +7,6 @@ mod ui_components;
 use ui_components::{create_viewport_with_icon, UIState};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv::dotenv().ok(); // just for the API key secret
-
     let imported_img_bytes = include_bytes!("heart_inlineBG.png");
     let custom_viewport = create_viewport_with_icon("GeminiOxide", imported_img_bytes)?;
 

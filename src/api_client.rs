@@ -4,7 +4,6 @@ use image::{DynamicImage, ImageBuffer, ImageFormat, RgbaImage};
 use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
-use std::env;
 use std::thread::JoinHandle;
 use tokio::runtime::Runtime;
 
@@ -30,19 +29,18 @@ pub async fn send_request(
     ai_model: String,
     image_data: Option<ColorImage>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    // Get API key from environment variable
-    let api_key =
-        env::var("GEMINI_API_KEY").map_err(|_| "GEMINI_API_KEY environment variable not set")?;
-
-    // Basic API key validation
+    // API key is embedded at compile time from GEMINI_API_KEY environment variable
+    // Set GEMINI_API_KEY before building: cargo build --release
+    const API_KEY: &str = env!("GEMINI_API_KEY");
+    
+    let api_key = API_KEY.trim();
+    
+    // Debug check for common issues
     if api_key.is_empty() {
-        return Err("GEMINI_API_KEY is empty".into());
+        return Err("API key is empty. Check your .env file and rebuild.".into());
     }
-
     if api_key.contains("your-actual-api-key-here") || api_key.contains("placeholder") {
-        return Err(
-            "Please set a valid GEMINI_API_KEY in your .env file (copy from .env.example)".into(),
-        );
+        return Err("API key is still a placeholder. Set a real key in .env and rebuild.".into());
     }
 
     let client = Client::new();

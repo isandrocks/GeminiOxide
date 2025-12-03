@@ -169,6 +169,11 @@ impl UIState {
                         "gemini-2.5-flash-lite".to_string(),
                         "gemini-2.5-flash-lite",
                     );
+                    ui.selectable_value(
+                        &mut self.ai_model,
+                        "gemini-3-pro-preview".to_string(),
+                        "gemini-3-pro-preview",
+                    );
                 });
         });
 
