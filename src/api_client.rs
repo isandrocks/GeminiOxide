@@ -28,6 +28,7 @@ pub async fn send_request(
     prompt: String,
     ai_model: String,
     image_data: Option<ColorImage>,
+    history: Option<(String, String)>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // API key is embedded at compile time from GEMINI_API_KEY environment variable
     // Set GEMINI_API_KEY before building: cargo build --release
@@ -45,7 +46,23 @@ pub async fn send_request(
 
     let client = Client::new();
 
-    let mut parts = Vec::new();
+    let mut contents = Vec::new();
+
+    // Add history if available
+    if let Some((last_prompt, last_response)) = history {
+        if !last_prompt.is_empty() && !last_response.is_empty() {
+            contents.push(json!({
+                "role": "user",
+                "parts": [{ "text": last_prompt }]
+            }));
+            contents.push(json!({
+                "role": "model",
+                "parts": [{ "text": last_response }]
+            }));
+        }
+    }
+
+    let mut current_parts = Vec::new();
 
     if let Some(img) = image_data {
         let [width, height] = img.size;
@@ -67,11 +84,16 @@ pub async fn send_request(
             }
         });
 
-        parts.push(image_part);
+        current_parts.push(image_part);
     }
 
-    parts.push(json!({
+    current_parts.push(json!({
         "text": prompt
+    }));
+
+    contents.push(json!({
+        "role": "user",
+        "parts": current_parts
     }));
 
     let res = client
@@ -82,11 +104,7 @@ pub async fn send_request(
         .query(&[("key", &api_key)])
         .header("Content-Type", "application/json")
         .json(&json!({
-            "contents": [
-                {
-                    "parts": parts
-                }
-            ]
+            "contents": contents
         }))
         .send()
         .await?;
@@ -121,10 +139,11 @@ pub fn spawn_async_request(
     prompt: String,
     ai_model: String,
     image_data: Option<ColorImage>,
+    history: Option<(String, String)>,
 ) -> JoinHandle<Result<String, ()>> {
     std::thread::spawn(move || {
         let response = Runtime::new().unwrap().block_on(async {
-            send_request(prompt, ai_model, image_data)
+            send_request(prompt, ai_model, image_data, history)
                 .await
                 .unwrap_or_else(|err| format!("Error: {}", err))
         });

@@ -48,12 +48,21 @@ impl UIState {
     pub fn start_async_request(&mut self, prompt: String) {
         if !self.is_loading && !prompt.trim().is_empty() {
             self.is_loading = true;
+            
+            // Capture history before updating last_prompt
+            let history = if !self.last_prompt.is_empty() && !self.llm_response.is_empty() {
+                Some((self.last_prompt.clone(), self.llm_response.clone()))
+            } else {
+                None
+            };
+            
             self.last_prompt = prompt.clone();
             let sent_model = self.ai_model.clone();
             self.client_thread = Some(spawn_async_request(
                 prompt,
                 sent_model,
                 self.captured_img.clone(),
+                history,
             ));
             self.prompt.clear();
             self.llm_response.clear();
@@ -255,6 +264,8 @@ impl UIState {
                         .maintain_aspect_ratio(true),
                 );
             }
+            
+            ui.add_space(10.0);
         });
     }
 
@@ -308,9 +319,8 @@ pub fn create_viewport_with_icon(
 ) -> Result<egui::ViewportBuilder, Box<dyn std::error::Error>> {
     let icon = crate::img_utils::create_app_icon(icon_bytes, 32, 32)?;
 
-    Ok(egui::ViewportBuilder {
-        title: Some(title.to_string()),
-        icon: Some(Arc::new(icon)),
-        ..egui::ViewportBuilder::default()
-    })
+    Ok(egui::ViewportBuilder::default()
+        .with_title(title)
+        .with_icon(Arc::new(icon))
+        .with_always_on_top())
 }

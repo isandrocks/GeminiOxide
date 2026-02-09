@@ -34,6 +34,15 @@ struct MyApp {
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // On the first frame, disable always_on_top so it doesn't stay stuck on top
+        // It was enabled in creation to ensure the window appears above others
+        if self.ui_state.first_frame {
+            ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::Normal));
+            self.ui_state.first_frame = false;
+        }
+
+        self.ui_state.render_error_section(ctx);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             let should_generate_from_input = self.ui_state.render_prompt_section(ui);
             let (should_generate_from_button, _img_context) =
@@ -45,8 +54,8 @@ impl eframe::App for MyApp {
             }
 
             self.ui_state.render_response_section(ui, ctx);
-            self.ui_state.render_error_section(ctx);
-            self.ui_state.render_loading_indicator(ctx);
         });
+
+        self.ui_state.render_loading_indicator(ctx);
     }
 }
