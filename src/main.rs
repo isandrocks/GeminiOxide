@@ -37,7 +37,9 @@ impl eframe::App for MyApp {
         // On the first frame, disable always_on_top so it doesn't stay stuck on top
         // It was enabled in creation to ensure the window appears above others
         if self.ui_state.first_frame {
-            ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(egui::WindowLevel::Normal));
+            ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(
+                egui::WindowLevel::Normal,
+            ));
             self.ui_state.first_frame = false;
         }
 
