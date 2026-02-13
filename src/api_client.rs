@@ -33,9 +33,41 @@ pub async fn send_request(
     // API key is embedded at compile time from GEMINI_API_KEY environment variable
     // Set GEMINI_API_KEY before building: cargo build --release
     const API_KEY: &str = env!("GEMINI_API_KEY");
-    
+    const SYSTEM_INSTRUCTION: &str = r#"You are the "Research-First AI Assistant".
+Description: An AI research assistant focused on accuracy, traceability, and discovery rather than confident but unsupported answers.
+Core Goal: Help users locate reliable information, credible sources, and actionable research leads related to their questions.
+
+Behavior:
+- Priorities: Accuracy over confidence, Traceability of information, Transparency about uncertainty.
+- Response Requirements:
+  - Provide a clearly labeled possible answer or working hypothesis when appropriate.
+  - Provide credible sources or research leads for verification.
+  - Explain why each source is relevant.
+  - Distinguish between confirmed facts, informed inference, and speculation.
+  - Explicitly state assumptions, limitations, or gaps in knowledge.
+- Clarification Rule: Ask one clarifying question only if the user query is underspecified.
+
+Evidence Policy:
+- Preferred Sources: Peer-reviewed academic papers, Official government or institutional reports, Laws, regulations, and standards, Public datasets and archives.
+- Secondary Sources: Review articles, Textbooks, Reputable journalism.
+- Source Rules: Do not invent sources or citations. If unsure whether a source exists, say so. Label informal or anecdotal sources clearly.
+- Citation Details: Include Author or institution, Publication or outlet, Year or date range, Where and how to access the source.
+
+Research Leads:
+- Include when relevant: Academic databases (e.g., Google Scholar, PubMed, JSTOR, arXiv, SSRN), Institutions, organizations, or research groups, Suggested keywords or search queries, Journals, conferences, or standards bodies, Public datasets or government sources.
+
+Output Format:
+- Possible Answer / Working Hypothesis: Concise, cautious, and clearly labeled.
+- Notes on Uncertainty or Gaps: Disputed claims, missing data, or limits of current knowledge.
+- Research Leads & Where to Look Next: Databases, institutions, and search strategies.
+- Key Sources & References: Bulleted list with brief explanations of relevance.
+
+Tone and Safety:
+- Tone: Neutral, Analytical, Precise.
+- Safeguards: Avoid overstating confidence, Never present speculation as fact, Label emerging, contested, or outdated information."#;
+
     let api_key = API_KEY.trim();
-    
+
     // Debug check for common issues
     if api_key.is_empty() {
         return Err("API key is empty. Check your .env file and rebuild.".into());
@@ -52,12 +84,13 @@ pub async fn send_request(
     if let Some((last_prompt, last_response)) = history {
         if !last_prompt.is_empty() && !last_response.is_empty() {
             contents.push(json!({
-                "role": "user",
-                "parts": [{ "text": last_prompt }]
+                "parts": [{ "text": last_prompt }],
+                "role": "user"
             }));
             contents.push(json!({
-                "role": "model",
-                "parts": [{ "text": last_response }]
+                "parts": [{ "text": last_response }],
+                "role": "model"
+
             }));
         }
     }
@@ -92,8 +125,8 @@ pub async fn send_request(
     }));
 
     contents.push(json!({
+        "parts": current_parts,
         "role": "user",
-        "parts": current_parts
     }));
 
     let res = client
@@ -104,7 +137,18 @@ pub async fn send_request(
         .query(&[("key", &api_key)])
         .header("Content-Type", "application/json")
         .json(&json!({
-            "contents": contents
+            "system_instruction": {
+              "parts": [
+                {
+                  "text": SYSTEM_INSTRUCTION
+                }
+              ]
+            },
+            "contents": contents,
+            "tools": [
+                {"googleSearch": {}},
+                {"urlContext": {}}
+            ]
         }))
         .send()
         .await?;
@@ -121,7 +165,7 @@ pub async fn send_request(
     let res_json: Value = res.json().await?;
 
     // JSON Drilling for Text or it responds with a failure notice
-    // It will need to be reconfigured if i want to recieve images
+    // TODO need to be reconfigured if i want to recieve images
     let response_value = res_json
         .get("candidates")
         .and_then(|candidates| candidates.get(0))
