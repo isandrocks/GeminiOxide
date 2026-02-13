@@ -7,33 +7,8 @@ use serde_json::Value;
 use std::thread::JoinHandle;
 use tokio::runtime::Runtime;
 
-fn rgba_to_png(
-    // this might be redundent. i will have to look into it later
-    rgba_data: &[u8],
-    width: u32,
-    height: u32,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let img: RgbaImage = ImageBuffer::from_raw(width, height, rgba_data.to_vec())
-        .ok_or("Failed to create image buffer from RGBA data")?;
-
-    let dynamic_img = DynamicImage::ImageRgba8(img);
-    let mut png_data = Vec::new();
-
-    dynamic_img.write_to(&mut std::io::Cursor::new(&mut png_data), ImageFormat::Png)?;
-
-    Ok(png_data)
-}
-
-pub async fn send_request(
-    prompt: String,
-    ai_model: String,
-    image_data: Option<ColorImage>,
-    history: Option<(String, String)>,
-) -> Result<String, Box<dyn std::error::Error>> {
-    // API key is embedded at compile time from GEMINI_API_KEY environment variable
-    // Set GEMINI_API_KEY before building: cargo build --release
-    const API_KEY: &str = env!("GEMINI_API_KEY");
-    const SYSTEM_INSTRUCTION: &str = r#"You are the "Research-First AI Assistant".
+/// System instruction for the AI assistant
+const SYSTEM_INSTRUCTION: &str = r#"You are the "Research-First AI Assistant".
 Description: An AI research assistant focused on accuracy, traceability, and discovery rather than confident but unsupported answers.
 Core Goal: Help users locate reliable information, credible sources, and actionable research leads related to their questions.
 
@@ -66,6 +41,59 @@ Tone and Safety:
 - Tone: Neutral, Analytical, Precise.
 - Safeguards: Avoid overstating confidence, Never present speculation as fact, Label emerging, contested, or outdated information."#;
 
+fn rgba_to_png(
+    rgba_data: &[u8],
+    width: u32,
+    height: u32,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let img: RgbaImage = ImageBuffer::from_raw(width, height, rgba_data.to_vec())
+        .ok_or("Failed to create image buffer from RGBA data")?;
+
+    let dynamic_img = DynamicImage::ImageRgba8(img);
+    let mut png_data = Vec::new();
+
+    dynamic_img.write_to(&mut std::io::Cursor::new(&mut png_data), ImageFormat::Png)?;
+
+    Ok(png_data)
+}
+
+/// Converts ColorImage to base64-encoded PNG data for API submission
+fn encode_image_to_base64(img: &ColorImage) -> Result<String, Box<dyn std::error::Error>> {
+    let [width, height] = img.size;
+
+    let rgba_bytes: Vec<u8> = img
+        .pixels
+        .iter()
+        .flat_map(|color| [color.r(), color.g(), color.b(), color.a()])
+        .collect();
+
+    let png_bytes = rgba_to_png(&rgba_bytes, width as u32, height as u32)?;
+    Ok(general_purpose::STANDARD.encode(&png_bytes))
+}
+
+/// Extracts text response from Gemini API JSON response
+fn extract_response_text(res_json: &Value) -> &str {
+    res_json
+        .get("candidates")
+        .and_then(|candidates| candidates.get(0))
+        .and_then(|candidate| candidate.get("content"))
+        .and_then(|content| content.get("parts"))
+        .and_then(|parts| parts.get(0))
+        .and_then(|part| part.get("text"))
+        .and_then(|text| text.as_str())
+        .unwrap_or("No response text found")
+}
+
+pub async fn send_request(
+    prompt: String,
+    ai_model: String,
+    image_data: Option<ColorImage>,
+    history: Option<(String, String)>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // API key is embedded at compile time from GEMINI_API_KEY environment variable
+    // Set GEMINI_API_KEY before building: cargo build --release
+    const API_KEY: &str = env!("GEMINI_API_KEY");
+
     let api_key = API_KEY.trim();
 
     // Debug check for common issues
@@ -90,7 +118,6 @@ Tone and Safety:
             contents.push(json!({
                 "parts": [{ "text": last_response }],
                 "role": "model"
-
             }));
         }
     }
@@ -98,17 +125,7 @@ Tone and Safety:
     let mut current_parts = Vec::new();
 
     if let Some(img) = image_data {
-        let [width, height] = img.size;
-
-        let rgba_bytes: Vec<u8> = img
-            .pixels
-            .iter()
-            .flat_map(|color| [color.r(), color.g(), color.b(), color.a()])
-            .collect();
-
-        let png_bytes = rgba_to_png(&rgba_bytes, width as u32, height as u32)?;
-
-        let base64_data = general_purpose::STANDARD.encode(&png_bytes);
+        let base64_data = encode_image_to_base64(&img)?;
 
         let image_part = json!({
             "inline_data": {
@@ -164,19 +181,8 @@ Tone and Safety:
 
     let res_json: Value = res.json().await?;
 
-    // JSON Drilling for Text or it responds with a failure notice
-    // TODO need to be reconfigured if i want to recieve images
-    let response_value = res_json
-        .get("candidates")
-        .and_then(|candidates| candidates.get(0))
-        .and_then(|candidate| candidate.get("content"))
-        .and_then(|content| content.get("parts"))
-        .and_then(|parts| parts.get(0))
-        .and_then(|part| part.get("text"))
-        .and_then(|text| text.as_str())
-        .unwrap_or("No response text found");
-
-    Ok(response_value.to_string())
+    let response_text = extract_response_text(&res_json);
+    Ok(response_text.to_string())
 }
 
 pub fn spawn_async_request(

@@ -48,14 +48,14 @@ impl UIState {
     pub fn start_async_request(&mut self, prompt: String) {
         if !self.is_loading && !prompt.trim().is_empty() {
             self.is_loading = true;
-            
+
             // Capture history before updating last_prompt
             let history = if !self.last_prompt.is_empty() && !self.llm_response.is_empty() {
                 Some((self.last_prompt.clone(), self.llm_response.clone()))
             } else {
                 None
             };
-            
+
             self.last_prompt = prompt.clone();
             let sent_model = self.ai_model.clone();
             self.client_thread = Some(spawn_async_request(
@@ -264,7 +264,7 @@ impl UIState {
                         .maintain_aspect_ratio(true),
                 );
             }
-            
+
             ui.add_space(10.0);
         });
     }
