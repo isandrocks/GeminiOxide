@@ -35,7 +35,7 @@ impl Default for UIState {
             show_image_buttons: false,
             error_message: None,
             first_frame: true,
-            ai_model: "gemini-2.5-flash".to_string(),
+            ai_model: "gemini-2.5-pro".to_string(),
         }
     }
 }
@@ -165,14 +165,15 @@ impl UIState {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut self.ai_model,
-                        "gemini-2.5-flash".to_string(),
-                        "gemini-2.5-flash",
-                    );
-                    ui.selectable_value(
-                        &mut self.ai_model,
                         "gemini-2.5-pro".to_string(),
                         "gemini-2.5-pro",
                     );
+                    ui.selectable_value(
+                        &mut self.ai_model,
+                        "gemini-2.5-flash".to_string(),
+                        "gemini-2.5-flash",
+                    );
+
                     ui.selectable_value(
                         &mut self.ai_model,
                         "gemini-2.5-flash-lite".to_string(),
