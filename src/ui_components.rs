@@ -195,10 +195,10 @@ impl UIState {
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
                         if ui
-                            .add_enabled(!self.is_loading, egui::Button::new("Screenshot"))
+                            .add_enabled(!self.is_loading, egui::Button::new("Pick Image"))
                             .clicked()
                         {
-                            match img_utils::take_full_screenshot(ctx) {
+                            match img_utils::pick_image_file() {
                                 Ok(color_image) => {
                                     self.captured_img = Some(color_image);
                                     self.captured_img_texture = None; // Clear texture cache to force recreation

@@ -1,22 +1,35 @@
 use arboard::Clipboard;
 use eframe::egui;
 use egui::ColorImage;
-use screenshots::Screen;
+use rfd::FileDialog;
+use std::fs;
 use std::path::Path;
 
-pub fn take_full_screenshot(_ctx: &egui::Context) -> Result<ColorImage, String> {
-    let screens = Screen::all().map_err(|e| format!("Failed to get screens: {}", e))?;
-    let screen = screens.first().ok_or("No screens found")?;
-    let image = screen
-        .capture()
-        .map_err(|e| format!("Failed to capture: {}", e))?;
+pub fn pick_image_file() -> Result<ColorImage, String> {
+    let file = FileDialog::new()
+        .add_filter(
+            "image",
+            &["png", "jpg", "jpeg", "gif", "bmp", "ico", "tiff", "webp"],
+        )
+        .pick_file();
 
-    let size = [image.width() as usize, image.height() as usize];
-    let pixels = image.into_raw();
+    if let Some(path) = file {
+        let bytes = fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+        load_color_image_from_bytes(&bytes)
+    } else {
+        Err("No file selected".to_string())
+    }
+}
 
-    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+pub fn load_color_image_from_bytes(bytes: &[u8]) -> Result<ColorImage, String> {
+    let img = image::load_from_memory(bytes)
+        .map_err(|e| format!("Failed to load image: {}", e))?
+        .to_rgba8();
 
-    Ok(color_image)
+    let size = [img.width() as usize, img.height() as usize];
+    let pixels = img.into_raw();
+
+    Ok(ColorImage::from_rgba_unmultiplied(size, &pixels))
 }
 
 pub fn load_image_from_bytes(bytes: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
