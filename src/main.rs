@@ -59,5 +59,6 @@ impl eframe::App for MyApp {
         });
 
         self.ui_state.render_loading_indicator(ctx);
+        self.ui_state.render_history_window(ctx);
     }
 }

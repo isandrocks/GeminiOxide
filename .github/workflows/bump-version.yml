@@ -1,0 +1,40 @@
+name: Bump Patch Version
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cargo-edit
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-edit
+
+      - name: Bump Patch Version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          cargo set-version --bump patch
+          
+          NEW_VERSION=$(grep "^version" Cargo.toml | head -1 | awk -F '"' '{print $2}')
+          
+          git add Cargo.toml
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+          git push

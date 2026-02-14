@@ -1,3 +1,4 @@
+use crate::ui_components::ChatMessage;
 use base64::{engine::general_purpose, Engine as _};
 use egui::ColorImage;
 use image::{DynamicImage, ImageBuffer, ImageFormat, RgbaImage};
@@ -71,7 +72,7 @@ pub async fn send_request(
     prompt: String,
     ai_model: String,
     image_data: Option<ColorImage>,
-    history: Option<(String, String)>,
+    history: Vec<ChatMessage>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // API key is embedded at compile time from GEMINI_API_KEY environment variable
     // Set GEMINI_API_KEY before building: cargo build --release
@@ -91,18 +92,12 @@ pub async fn send_request(
 
     let mut contents = Vec::new();
 
-    // Add history if available
-    if let Some((last_prompt, last_response)) = history {
-        if !last_prompt.is_empty() && !last_response.is_empty() {
-            contents.push(json!({
-                "parts": [{ "text": last_prompt }],
-                "role": "user"
-            }));
-            contents.push(json!({
-                "parts": [{ "text": last_response }],
-                "role": "model"
-            }));
-        }
+    // Add history
+    for msg in history {
+        contents.push(json!({
+            "parts": [{ "text": msg.content }],
+            "role": msg.role
+        }));
     }
 
     let mut current_parts = Vec::new();
@@ -131,10 +126,9 @@ pub async fn send_request(
 
     let res = client
         .post(format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
-            ai_model
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+            ai_model, api_key
         ))
-        .query(&[("key", &api_key)])
         .header("Content-Type", "application/json")
         .json(&json!({
             "system_instruction": {
@@ -172,7 +166,7 @@ pub fn spawn_async_request(
     prompt: String,
     ai_model: String,
     image_data: Option<ColorImage>,
-    history: Option<(String, String)>,
+    history: Vec<ChatMessage>, // accepts Vec<ChatMessage>
 ) -> JoinHandle<Result<String, ()>> {
     std::thread::spawn(move || {
         let response = Runtime::new().unwrap().block_on(async {

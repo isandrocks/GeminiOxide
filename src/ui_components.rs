@@ -6,10 +6,18 @@ use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+#[derive(Clone, Debug)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
 pub struct UIState {
     pub prompt: String,
     pub last_prompt: String,
     pub llm_response: String,
+    pub chat_history: Vec<ChatMessage>,
+    pub show_history_window: bool,
     pub is_loading: bool,
     pub client_thread: Option<JoinHandle<Result<String, ()>>>,
     pub commonmark_cache: CommonMarkCache,
@@ -27,6 +35,8 @@ impl Default for UIState {
             prompt: String::new(),
             last_prompt: String::new(),
             llm_response: String::new(),
+            chat_history: Vec::new(),
+            show_history_window: false,
             is_loading: false,
             client_thread: None,
             commonmark_cache: CommonMarkCache::default(),
@@ -42,19 +52,29 @@ impl Default for UIState {
 
 impl UIState {
     pub fn update_llm_response(&mut self, response: String) {
-        self.llm_response = response;
+        self.llm_response = response.clone();
+        self.chat_history.push(ChatMessage {
+            role: "user".to_string(),
+            content: self.last_prompt.clone(),
+        });
+        self.chat_history.push(ChatMessage {
+            role: "model".to_string(),
+            content: response,
+        });
     }
 
     pub fn start_async_request(&mut self, prompt: String) {
         if !self.is_loading && !prompt.trim().is_empty() {
             self.is_loading = true;
 
-            // Capture history before updating last_prompt
-            let history = if !self.last_prompt.is_empty() && !self.llm_response.is_empty() {
-                Some((self.last_prompt.clone(), self.llm_response.clone()))
+            // Capture last 10 messages for context
+            let history_len = self.chat_history.len();
+            let start_idx = if history_len > 10 {
+                history_len - 10
             } else {
-                None
+                0
             };
+            let history = self.chat_history[start_idx..].to_vec();
 
             self.last_prompt = prompt.clone();
             let sent_model = self.ai_model.clone();
@@ -147,6 +167,10 @@ impl UIState {
             {
                 self.show_image_buttons = !self.show_image_buttons;
                 self.clear_error();
+            }
+
+            if ui.button("History").clicked() {
+                self.show_history_window = !self.show_history_window;
             }
 
             if let Some(ref _color_image) = self.captured_img {
@@ -251,7 +275,9 @@ impl UIState {
                 ui.label(format!("Prompt: {}", self.last_prompt));
                 ui.separator();
 
-                CommonMarkViewer::new().show(ui, &mut self.commonmark_cache, &self.llm_response);
+                CommonMarkViewer::new()
+                    .max_image_width(Some(ui.available_width() as usize))
+                    .show(ui, &mut self.commonmark_cache, &self.llm_response);
             } else {
                 ui.label("No response yet...");
             }
@@ -282,6 +308,52 @@ impl UIState {
                 }
             });
         });
+    }
+
+    pub fn render_history_window(&mut self, ctx: &egui::Context) {
+        if self.show_history_window {
+            let should_close = ctx.show_viewport_immediate(
+                egui::ViewportId::from_hash_of("history_viewport"),
+                egui::ViewportBuilder::default()
+                    .with_title("Chat History")
+                    .with_inner_size([400.0, 600.0]),
+                |ctx, class| {
+                    assert!(
+                        class == egui::ViewportClass::Immediate,
+                        "This egui backend doesn't support multiple viewports"
+                    );
+
+                    let mut close_requested = false;
+                    if ctx.input(|i| i.viewport().close_requested()) {
+                        close_requested = true;
+                    }
+
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        ui.heading("Chat History");
+                        if ui.button("Clear History").clicked() {
+                            self.chat_history.clear();
+                        }
+                        ui.separator();
+                        
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for msg in &self.chat_history {
+                                 ui.horizontal_wrapped(|ui| {
+                                    ui.label(egui::RichText::new(format!("{}:", msg.role)).strong());
+                                    ui.label(&msg.content);
+                                });
+                                 ui.separator();
+                            }
+                        });
+                    });
+                    
+                    close_requested
+                },
+            );
+            
+            if should_close {
+                self.show_history_window = false;
+            }
+        }
     }
 
     pub fn render_loading_indicator(&mut self, ctx: &egui::Context) {
