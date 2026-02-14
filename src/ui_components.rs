@@ -231,7 +231,7 @@ impl UIState {
                                     self.clear_error();
                                 }
                                 Err(e) => {
-                                    self.set_error(format!("Screenshot failed: {}", e));
+                                    self.set_error(format!("Image pick failed: {}", e));
                                 }
                             }
                         }
