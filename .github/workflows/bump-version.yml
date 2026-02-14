@@ -3,7 +3,7 @@ name: Bump Patch Version
 on:
   push:
     branches:
-      - main
+      - master
     paths-ignore:
       - 'Cargo.toml'
       - 'Cargo.lock'
@@ -35,6 +35,6 @@ jobs:
           
           NEW_VERSION=$(grep "^version" Cargo.toml | head -1 | awk -F '"' '{print $2}')
           
-          git add Cargo.toml
+          git add Cargo.toml Cargo.lock
           git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
           git push
