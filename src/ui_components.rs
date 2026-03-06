@@ -45,7 +45,7 @@ impl Default for UIState {
             show_image_buttons: false,
             error_message: None,
             first_frame: true,
-            ai_model: "gemini-2.5-pro".to_string(),
+            ai_model: "gemini-3.1-pro-preview".to_string(),
         }
     }
 }
@@ -189,6 +189,11 @@ impl UIState {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut self.ai_model,
+                        "gemini-3.1-pro-preview".to_string(),
+                        "gemini-3.1-pro-preview",
+                    );
+                    ui.selectable_value(
+                        &mut self.ai_model,
                         "gemini-2.5-pro".to_string(),
                         "gemini-2.5-pro",
                     );
@@ -202,11 +207,6 @@ impl UIState {
                         &mut self.ai_model,
                         "gemini-2.5-flash-lite".to_string(),
                         "gemini-2.5-flash-lite",
-                    );
-                    ui.selectable_value(
-                        &mut self.ai_model,
-                        "gemini-3-pro-preview".to_string(),
-                        "gemini-3-pro-preview",
                     );
                 });
         });
@@ -334,22 +334,24 @@ impl UIState {
                             self.chat_history.clear();
                         }
                         ui.separator();
-                        
+
                         egui::ScrollArea::vertical().show(ui, |ui| {
                             for msg in &self.chat_history {
-                                 ui.horizontal_wrapped(|ui| {
-                                    ui.label(egui::RichText::new(format!("{}:", msg.role)).strong());
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.label(
+                                        egui::RichText::new(format!("{}:", msg.role)).strong(),
+                                    );
                                     ui.label(&msg.content);
                                 });
-                                 ui.separator();
+                                ui.separator();
                             }
                         });
                     });
-                    
+
                     close_requested
                 },
             );
-            
+
             if should_close {
                 self.show_history_window = false;
             }
