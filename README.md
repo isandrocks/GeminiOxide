@@ -10,6 +10,8 @@ A Rust GUI application that provides an interface to Google's Gemini AI, with su
 - Markdown rendering for AI responses
 - Cross-platform support
 
+![Demo Img](https://i.imgur.com/PmDn1QN.png)
+
 ## Setup
 
 ### Prerequisites
